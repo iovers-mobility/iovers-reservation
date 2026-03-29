@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iovers Mobility — Réservation VTC</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<!-- Google Maps avec callback — chargement propre hors Wix -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDZtcNWyBBecS9jRXvB6USFRIF3830S4Pw&libraries=places,geometry&callback=initAutocomplete" async defer></script>
+<style>
+  :root {
+    --gold: #C9A84C; --gold-light: #E8C97A; --gold-dark: #A07832;
+    --noir: #0A0A0A; --noir-soft: #111111; --noir-mid: #1A1A1A; --noir-card: #141414;
+    --text-primary: #F0EBE0; --text-muted: #8A8070; --text-gold: #C9A84C;
+    --border: rgba(201,168,76,0.2); --border-hover: rgba(201,168,76,0.5);
+    --radius: 2px; --radius-lg: 4px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--noir); color: var(--text-primary); font-family: 'Jost', sans-serif; font-weight: 300; line-height: 1.7; min-height: 100vh; }
+
+  /* NAV */
+  nav { position: sticky; top: 0; z-index: 100; background: rgba(10,10,10,0.95); border-bottom: 1px solid var(--border); backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; height: 64px; }
+  .nav-logo { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 500; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; }
+  .nav-logo span { color: var(--text-primary); }
+  .nav-tabs { display: flex; }
+  .nav-tab { background: none; border: none; cursor: pointer; color: var(--text-muted); font-family: 'Jost', sans-serif; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; padding: 0 1.25rem; height: 64px; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; }
+  .nav-tab:hover { color: var(--text-primary); }
+  .nav-tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .nav-mode { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-muted); }
+
+  /* SECTIONS */
+  .section { display: none; padding: 3rem 2rem; max-width: 860px; margin: 0 auto; }
+  .section.active { display: block; }
+
+  /* HEADINGS */
+  .section-title { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 300; letter-spacing: 2px; color: var(--text-primary); margin-bottom: 0.25rem; }
+  .section-sub { font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-gold); margin-bottom: 2.5rem; }
+  .divider { height: 1px; background: linear-gradient(90deg, var(--gold) 0%, transparent 100%); margin: 2rem 0; }
+
+  /* FORM */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.span2 { grid-column: span 2; }
+  label { font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text-muted); }
+  input, select, textarea { background: var(--noir-mid); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-family: 'Jost', sans-serif; font-size: 14px; font-weight: 300; padding: 10px 14px; transition: border-color .2s, background .2s; width: 100%; outline: none; -webkit-appearance: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--gold); background: rgba(201,168,76,0.04); }
+  select option { background: var(--noir-mid); color: var(--text-primary); }
+  textarea { resize: vertical; min-height: 80px; }
+  input::placeholder { color: var(--text-muted); }
+
+  /* GOOGLE AUTOCOMPLETE DROPDOWN */
+  .pac-container { background: #1A1A1A !important; border: 1px solid rgba(201,168,76,0.3) !important; border-radius: 4px !important; font-family: 'Jost', sans-serif !important; margin-top: 2px !important; box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important; z-index: 99999 !important; }
+  .pac-item { background: #1A1A1A !important; color: #F0EBE0 !important; border-top: 1px solid rgba(201,168,76,0.1) !important; padding: 8px 14px !important; font-size: 13px !important; cursor: pointer !important; }
+  .pac-item:hover { background: #2A2A2A !important; }
+  .pac-item-query { color: #C9A84C !important; font-size: 13px !important; }
+  .pac-matched { color: #C9A84C !important; font-weight: 500 !important; }
+  .pac-icon { display: none !important; }
+
+  /* PRICE BOX */
+  .price-box { background: var(--noir-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem 2rem; margin: 2rem 0; }
+  .price-box-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1rem; }
+  .price-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; }
+  .price-row-label { font-size: 13px; color: var(--text-muted); }
+  .price-row-value { font-size: 14px; color: var(--text-primary); }
+  .price-total { border-top: 1px solid var(--border); margin-top: 0.75rem; padding-top: 1rem; display: flex; justify-content: space-between; align-items: baseline; }
+  .price-total-label { font-family: 'Cormorant Garamond', serif; font-size: 16px; letter-spacing: 2px; color: var(--text-muted); }
+  .price-total-value { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 500; color: var(--gold); }
+  .price-note { font-size: 11px; color: var(--text-muted); margin-top: 0.5rem; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; font-family: 'Jost', sans-serif; font-size: 11px; letter-spacing: 2.5px; text-transform: uppercase; padding: 14px 28px; border-radius: var(--radius); transition: all .2s; border: none; }
+  .btn-gold { background: var(--gold); color: var(--noir); font-weight: 500; }
+  .btn-gold:hover { background: var(--gold-light); }
+  .btn-outline { background: transparent; color: var(--gold); border: 1px solid var(--gold); }
+  .btn-outline:hover { background: rgba(201,168,76,0.08); }
+  .btn-danger { background: #8B0000; color: #FFD0D0; font-weight: 500; }
+  .btn-danger:hover { background: #a00; }
+  .btn-success { background: #1A4A2E; color: #A0E8B0; font-weight: 500; border: 1px solid #2A6A40; }
+  .btn-success:hover { background: #245A38; }
+  .btn-waze { background: #34D4F1; color: #001020; font-weight: 500; }
+  .btn-waze:hover { background: #50E0FF; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem; }
+
+  /* CARDS */
+  .card { background: var(--noir-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 3px 10px; border-radius: 100px; font-weight: 500; }
+  .badge-pending { background: rgba(201,168,76,0.12); color: var(--gold); border: 1px solid rgba(201,168,76,0.3); }
+  .badge-active { background: rgba(0,200,100,0.1); color: #50E090; border: 1px solid rgba(0,200,100,0.25); }
+  .badge-done { background: rgba(100,100,200,0.1); color: #9090E0; border: 1px solid rgba(100,100,200,0.25); }
+
+  /* EXPERIENCE CARDS */
+  .exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem; }
+  .exp-card { background: var(--noir-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: border-color .3s; }
+  .exp-card:hover { border-color: var(--gold); }
+  .exp-card-img { height: 160px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0A0A0A 0%, #1a1206 100%); border-bottom: 1px solid var(--border); position: relative; overflow: hidden; }
+  .exp-card-img::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 50%, rgba(201,168,76,0.1) 0%, transparent 70%); }
+  .exp-card-body { padding: 1.25rem; }
+  .exp-card-title { font-family: 'Cormorant Garamond', serif; font-size: 18px; margin-bottom: 4px; color: var(--text-primary); }
+  .exp-card-price { font-size: 20px; font-weight: 500; color: var(--gold); font-family: 'Cormorant Garamond', serif; }
+  .exp-card-desc { font-size: 13px; color: var(--text-muted); margin: 8px 0 14px; line-height: 1.6; }
+  .exp-tag { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 8px; border: 1px solid var(--border); border-radius: 100px; color: var(--text-muted); margin-right: 6px; }
+
+  /* BON DE COMMANDE */
+  .bon-preview { background: #fff; color: #111; border-radius: var(--radius-lg); padding: 2rem; font-family: 'Jost', sans-serif; font-size: 13px; line-height: 1.7; display: none; margin-top: 2rem; }
+  .bon-preview h2 { font-size: 16px; text-align: center; font-weight: 600; margin-bottom: 1rem; }
+  .bon-preview h3 { font-size: 13px; font-weight: 600; margin: 1rem 0 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .bon-preview .bon-row { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 3px 0; }
+  .bon-preview .bon-total { font-size: 16px; font-weight: 700; text-align: right; margin-top: 1rem; padding-top: 1rem; border-top: 2px solid #111; }
+  .bon-preview .bon-legal { font-size: 10px; color: #666; margin-top: 1.5rem; line-height: 1.5; }
+  .bon-preview .bon-sig { margin-top: 2rem; display: flex; justify-content: space-between; }
+
+  /* DRIVER */
+  .driver-panel { background: var(--noir-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; }
+  .driver-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+  .driver-info { font-size: 13px; color: var(--text-muted); }
+  .driver-info strong { color: var(--text-primary); font-weight: 400; }
+
+  /* TOAST */
+  #toast { position: fixed; bottom: 2rem; right: 2rem; z-index: 9999; background: var(--noir-mid); border: 1px solid var(--gold); border-radius: var(--radius-lg); padding: 1rem 1.5rem; font-size: 13px; color: var(--text-primary); opacity: 0; pointer-events: none; transform: translateY(10px); transition: all .3s; max-width: 320px; }
+  #toast.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+
+  /* DRIVER LOCK */
+  #driver-lock { text-align: center; padding: 3rem 1rem; }
+  #driver-lock input { max-width: 220px; text-align: center; letter-spacing: 6px; font-size: 18px; margin: 0 auto 1rem; display: block; }
+
+  /* PAYMENT */
+  .btn-stripe { background: #635BFF; color: #fff; font-weight: 500; border: none; width: 100%; justify-content: center; font-size: 14px; padding: 16px 28px; letter-spacing: 1px; }
+  .btn-stripe:hover { background: #4F46E5; }
+  .btn-stripe:disabled { opacity: .5; cursor: not-allowed; }
+  .payment-box { background: var(--noir-card); border: 1px solid rgba(99,91,255,0.3); border-radius: var(--radius-lg); padding: 1.5rem; margin-top: 1.5rem; display: none; }
+  .payment-box-title { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #9090E0; margin-bottom: 1rem; }
+  .payment-amount { font-family: 'Cormorant Garamond', serif; font-size: 36px; color: #fff; margin-bottom: 0.5rem; }
+  .payment-detail { font-size: 12px; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.8; }
+  .payment-success { background: rgba(0,200,100,0.1); border: 1px solid rgba(0,200,100,0.25); border-radius: var(--radius-lg); padding: 1.25rem; text-align: center; display: none; margin-top: 1rem; }
+
+  /* FACTURE */
+  .facture-box { background: #fff; color: #111; border-radius: var(--radius-lg); padding: 2rem; font-size: 13px; line-height: 1.7; display: none; margin-top: 2rem; }
+  .facture-header { display: flex; justify-content: space-between; margin-bottom: 2rem; }
+  .facture-header h1 { font-size: 24px; font-weight: 700; color: #C9A84C; }
+  .facture-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+  .facture-table th { background: #f5f0e8; padding: 8px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  .facture-table td { padding: 8px; border-bottom: 1px solid #eee; }
+  .facture-total { text-align: right; margin-top: 1rem; font-size: 15px; font-weight: 700; }
+
+  /* DISTANCE BOX */
+  .distance-box { display:flex; gap:1rem; align-items:center; background:var(--noir-mid); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 640px) {
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.span2 { grid-column: span 1; }
+    .exp-grid { grid-template-columns: 1fr; }
+    nav { padding: 0 1rem; }
+    .nav-tab { padding: 0 0.75rem; font-size: 10px; }
+    .section { padding: 2rem 1rem; }
+    .nav-mode { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">iovers<span> Mobility</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showSection('reservation')">Réserver</button>
+    <button class="nav-tab" onclick="showSection('experiences')">Expériences</button>
+    <button class="nav-tab" onclick="showSection('driver')">Conducteur</button>
+    <button class="nav-tab" onclick="showSection('vtcimmersif')">VTC Immersif Paris IDF</button>
+  </div>
+  <div class="nav-mode">VTC Immersif · Paris IDF</div>
+</nav>
+
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════
+     SECTION 1 — RÉSERVATION
+══════════════════════════════════════ -->
+<section class="section active" id="section-reservation">
+  <div class="section-title">Réservation VTC</div>
+  <div class="section-sub">Bon de commande préalable · Décret n°2014-1531</div>
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:1.5rem;">
+    <select id="lang-select" onchange="changerLangue(this.value)" style="width:auto;padding:6px 12px;font-size:12px;letter-spacing:1px;">
+      <option value="fr">Français</option>
+      <option value="en">English</option>
+    </select>
+  </div>
+
+  <div class="form-grid">
+    <div class="form-group">
+      <label id="lbl-nom">Prénom & Nom</label>
+      <input type="text" id="client-nom" placeholder="Votre nom complet" required>
+    </div>
+    <div class="form-group">
+      <label id="lbl-tel">Téléphone</label>
+      <input type="tel" id="client-tel" placeholder="+33 6 00 00 00 00">
+    </div>
+    <div class="form-group span2">
+      <label id="lbl-email">Email</label>
+      <input type="email" id="client-email" placeholder="votre@email.com" required>
+    </div>
+
+    <!-- ADRESSE DÉPART — input type="text" normal, Google Autocomplete s'y accroche -->
+    <div class="form-group span2">
+      <label id="lbl-depart">Adresse de départ</label>
+      <div style="position:relative;">
+        <input type="text" id="depart" placeholder="Saisissez l'adresse de prise en charge…" autocomplete="off" required>
+        <div id="depart-ok" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#50E090;font-size:16px;pointer-events:none;">✓</div>
+      </div>
+    </div>
+
+    <!-- ADRESSE ARRIVÉE — input type="text" normal -->
+    <div class="form-group span2">
+      <label id="lbl-arrivee">Adresse d'arrivée</label>
+      <div style="position:relative;">
+        <input type="text" id="arrivee" placeholder="Saisissez l'adresse de destination…" autocomplete="off" required>
+        <div id="arrivee-ok" style="display:none;position:absolute;right:12px;top:50%;transform:translateY(-50%);color:#50E090;font-size:16px;pointer-events:none;">✓</div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label id="lbl-date">Date de course</label>
+      <input type="date" id="date-course" required>
+    </div>
+    <div class="form-group">
+      <label id="lbl-heure">Heure de prise en charge</label>
+      <input type="time" id="heure-course" required>
+    </div>
+    <div class="form-group">
+      <label id="lbl-passagers">Nombre de passagers</label>
+      <select id="nb-passagers">
+        <option value="1">1 passager</option>
+        <option value="2">2 passagers</option>
+        <option value="3">3 passagers</option>
+        <option value="4">4 passagers</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label id="lbl-type">Type de course <span style="font-size:9px;color:var(--text-muted);">(auto selon heure)</span></label>
+      <select id="type-course" onchange="updatePrice()">
+        <option value="standard">Standard (6h–22h semaine)</option>
+        <option value="nuit">Nuit / Weekend (+20%)</option>
+        <option value="immersive">Expérience immersive (+forfait)</option>
+        <option value="attente">Mise à disposition (à l'heure)</option>
+      </select>
+    </div>
+
+    <!-- Résultat distance -->
+    <div class="form-group span2" id="distance-result-box" style="display:none;">
+      <label>Distance & durée calculées automatiquement</label>
+      <div class="distance-box">
+        <span style="font-size:20px;color:var(--gold);" id="distance-display">—</span>
+        <span style="color:var(--text-muted);">·</span>
+        <span style="font-size:14px;color:var(--text-muted);" id="duree-display">—</span>
+        <input type="hidden" id="distance" value="0">
+      </div>
+    </div>
+
+    <div class="form-group span2">
+      <label id="lbl-notes">Notes / Demandes spéciales</label>
+      <textarea id="notes" placeholder="Bagages, accessibilité, instructions particulières…"></textarea>
+    </div>
+  </div>
+
+  <!-- Bouton calcul distance manuel (toujours visible en complément) -->
+  <div style="margin:1.25rem 0;">
+    <button class="btn btn-outline" onclick="calculerDistanceManuel()" style="width:100%;justify-content:center;" id="btn-calc-dist">
+      Calculer la distance & le tarif
+    </button>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:6px;text-align:center;">
+      L'autocomplete remplit les adresses automatiquement · ou saisissez manuellement et cliquez ci-dessus
+    </div>
+  </div>
+
+  <!-- ESTIMATION TARIFAIRE -->
+  <div id="price-box" class="price-box" style="display:none;">
+    <div class="price-box-title">Estimation tarifaire</div>
+    <div class="price-row">
+      <span class="price-row-label">Prise en charge</span>
+      <span class="price-row-value" id="p-pec">—</span>
+    </div>
+    <div class="price-row">
+      <span class="price-row-label">Distance (<span id="p-dist-label">0</span> km × 2,00 €)</span>
+      <span class="price-row-value" id="p-dist">—</span>
+    </div>
+    <div class="price-row" id="row-supplement" style="display:none;">
+      <span class="price-row-label">Supplément nuit/WE (+20%)</span>
+      <span class="price-row-value" id="p-supp">—</span>
+    </div>
+    <div class="price-row" id="row-immersive" style="display:none;">
+      <span class="price-row-label">Forfait expérience immersive</span>
+      <span class="price-row-value">+ 50,00 €</span>
+    </div>
+    <div class="price-total">
+      <span class="price-total-label">Total estimé TTC</span>
+      <span class="price-total-value" id="p-total">—</span>
+    </div>
+    <div class="price-note">* Prix calculé via Google Maps. Minimum 20 €. Le prix définitif figure sur le bon signé.</div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-gold" onclick="genererBon()" id="btn-generer" disabled>Générer le bon de commande</button>
+  </div>
+
+  <!-- BON DE COMMANDE -->
+  <div class="bon-preview" id="bon-preview">
+    <h2>BON DE COMMANDE PRÉALABLE VTC</h2>
+    <p style="text-align:center;font-size:11px;color:#666;margin-bottom:1.5rem;">Conformément au décret n°2014-1531 du 17 décembre 2014 et à l'article L3122-2 du Code des transports</p>
+    <h3>Opérateur</h3>
+    <div class="bon-row"><span>Raison sociale</span><span>IOVERS MOBILITY SAS</span></div>
+    <div class="bon-row"><span>SIREN</span><span>989 372 529</span></div>
+    <div class="bon-row"><span>SIRET</span><span>989 372 529 00010</span></div>
+    <div class="bon-row"><span>Contact</span><span>contact@iovers.fr</span></div>
+    <div class="bon-row"><span>Assureur RC Pro</span><span>Allianz</span></div>
+    <h3>Chauffeur</h3>
+    <div class="bon-row"><span>Nom</span><span>Saunier Clément Pierre André</span></div>
+    <div class="bon-row"><span>N° carte VTC</span><span>09225082001</span></div>
+    <div class="bon-row"><span>Validité</span><span>03/06/2030</span></div>
+    <h3>Véhicule</h3>
+    <div class="bon-row"><span>Modèle</span><span>Kia EV6 GT Line — Premium Électrique</span></div>
+    <div class="bon-row"><span>Immatriculation</span><span id="bon-immat">—</span></div>
+    <div class="bon-row"><span>Capacité</span><span>4 passagers max</span></div>
+    <h3>Course réservée</h3>
+    <div class="bon-row"><span>Client</span><span id="bon-client">—</span></div>
+    <div class="bon-row"><span>Téléphone</span><span id="bon-tel">—</span></div>
+    <div class="bon-row"><span>Départ</span><span id="bon-depart">—</span></div>
+    <div class="bon-row"><span>Arrivée</span><span id="bon-arrivee">—</span></div>
+    <div class="bon-row"><span>Date et heure</span><span id="bon-datetime">—</span></div>
+    <div class="bon-row"><span>Passagers</span><span id="bon-passagers">—</span></div>
+    <div class="bon-row"><span>Type</span><span id="bon-type">—</span></div>
+    <div class="bon-row"><span>Distance estimée</span><span id="bon-distance">—</span></div>
+    <div class="bon-total" id="bon-total-text">Prix estimé TTC : —</div>
+    <h3>Conditions tarifaires</h3>
+    <div class="bon-row"><span>Prise en charge min.</span><span>20,00 € TTC</span></div>
+    <div class="bon-row"><span>Tarif kilométrique</span><span>2,00 € / km</span></div>
+    <div class="bon-row"><span>Supplément nuit/WE</span><span>+20% (22h–6h et sam/dim)</span></div>
+    <div class="bon-row"><span>Attente</span><span>30,00 € / heure</span></div>
+    <div class="bon-row"><span>Paiement</span><span>En ligne à la réservation (Stripe)</span></div>
+    <div class="bon-row"><span>Annulation gratuite</span><span>Jusqu'à 24h avant</span></div>
+    <div class="bon-legal">
+      <strong>Information légale :</strong> Conformément à l'article L3122-2 du Code des transports, toute commande VTC doit faire l'objet d'un accord préalable sur le prix. Ce document constitue votre bon de commande préalable obligatoire.<br><br>
+      <strong>RGPD :</strong> Données traitées uniquement pour votre réservation. Contact : contact@iovers.fr
+    </div>
+    <div class="bon-sig">
+      <div><strong>Signature opérateur :</strong><br><br><span style="font-style:italic;font-size:16px;font-family:serif;">Clément Saunier</span><br><span style="font-size:10px;color:#666;">Gérant — IOVERS MOBILITY SAS</span></div>
+      <div style="text-align:right;"><strong>Accord client :</strong><br><span id="bon-sig-client" style="font-style:italic;font-size:12px;color:#666;">— à valider en ligne —</span><br><span style="font-size:10px;color:#666;">Date : <span id="bon-sig-date">—</span></span></div>
+    </div>
+    <div style="text-align:center;margin-top:1.5rem;"><div id="bon-ref" style="font-size:11px;color:#666;letter-spacing:2px;text-transform:uppercase;"></div></div>
+  </div>
+
+  <div id="confirm-actions" style="display:none;" class="btn-row">
+    <button class="btn btn-outline" onclick="telechargerBon()">↓ Télécharger le bon (PDF)</button>
+  </div>
+
+  <!-- PAIEMENT STRIPE -->
+  <div class="payment-box" id="payment-box">
+    <div class="payment-box-title">Paiement sécurisé — Stripe</div>
+    <div class="payment-amount" id="pay-amount">—</div>
+    <div class="payment-detail" id="pay-detail">Course VTC iovers Mobility<br>TVA 10% incluse · Paiement 100% sécurisé</div>
+    <button class="btn btn-stripe" id="btn-stripe" onclick="lancerPaiementStripe()">💳 Payer ma course en ligne</button>
+    <div style="display:flex;align-items:center;gap:8px;margin-top:1rem;justify-content:center;">
+      <span style="font-size:10px;color:var(--text-muted);">SÉCURISÉ PAR</span>
+      <span style="font-size:12px;color:#635BFF;font-weight:500;">stripe</span>
+      <span style="font-size:10px;color:var(--text-muted);">· Visa · Mastercard · Apple Pay · Google Pay</span>
+    </div>
+  </div>
+
+  <div class="payment-success" id="payment-success">
+    <div style="font-size:32px;margin-bottom:0.5rem;">✓</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#50E090;margin-bottom:0.5rem;">Paiement confirmé !</div>
+    <div style="font-size:13px;color:var(--text-muted);" id="success-ref">Votre réservation est enregistrée.</div>
+    <div style="margin-top:1rem;"><button class="btn btn-outline" onclick="telechargerBon()" style="font-size:11px;">↓ Télécharger le bon</button></div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     SECTION 2 — EXPÉRIENCES
+══════════════════════════════════════ -->
+<section class="section" id="section-experiences">
+  <div class="section-title">Expériences Immersives</div>
+  <div class="section-sub">BACKtotheART · Réservation en ligne</div>
+  <p style="font-size:14px;color:var(--text-muted);line-height:1.8;max-width:580px;">Embarquez dans une œuvre d'art. À bord de notre Kia EV6 électrique, vivez une immersion en réalité virtuelle pendant votre trajet — de Van Gogh à l'art contemporain. Chaque expérience est unique, diffusée sur casque Meta Quest 3.</p>
+  <div class="exp-grid">
+    <div class="exp-card">
+      <div class="exp-card-img"><span style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);letter-spacing:2px;z-index:1;">Van Gogh</span></div>
+      <div class="exp-card-body">
+        <div class="exp-card-title">Dans la Chambre d'Arles</div>
+        <div class="exp-card-price">+ 50 €</div>
+        <div class="exp-card-desc">Pénétrez au cœur du tableau. Chaque objet de la chambre prend vie autour de vous en 3D, avec les couleurs et la perspective distordues du maître.</div>
+        <span class="exp-tag">360° VR</span><span class="exp-tag">~15 min</span><span class="exp-tag">Meta Quest 3</span>
+        <div style="margin-top:14px;"><button class="btn btn-outline" onclick="reserverExperience('Van Gogh — Chambre d\'Arles')" style="width:100%;justify-content:center;">Réserver</button></div>
+      </div>
+    </div>
+    <div class="exp-card">
+      <div class="exp-card-img"><span style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);letter-spacing:2px;z-index:1;">Art Plunge</span></div>
+      <div class="exp-card-body">
+        <div class="exp-card-title">Plongée dans la toile</div>
+        <div class="exp-card-price">+ 50 €</div>
+        <div class="exp-card-desc">Littéralement immergé dans la peinture — tableaux impressionnistes, abstraction lyrique, street art. Sélection selon vos préférences.</div>
+        <span class="exp-tag">180° SBS</span><span class="exp-tag">~20 min</span><span class="exp-tag">Stéréoscopique</span>
+        <div style="margin-top:14px;"><button class="btn btn-outline" onclick="reserverExperience('Art Plunge — Plongée dans la toile')" style="width:100%;justify-content:center;">Réserver</button></div>
+      </div>
+    </div>
+    <div class="exp-card">
+      <div class="exp-card-img"><span style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);letter-spacing:2px;z-index:1;">Premium</span></div>
+      <div class="exp-card-body">
+        <div class="exp-card-title">Expérience sur mesure</div>
+        <div class="exp-card-price">Sur devis</div>
+        <div class="exp-card-desc">Corporate, anniversaires VIP, séminaires : expérience personnalisée avec votre univers de marque en VR 360°.</div>
+        <span class="exp-tag">Corporate</span><span class="exp-tag">Sur mesure</span>
+        <div style="margin-top:14px;"><button class="btn btn-gold" onclick="reserverExperience('Expérience sur mesure')" style="width:100%;justify-content:center;">Nous contacter</button></div>
+      </div>
+    </div>
+    <div class="exp-card">
+      <div class="exp-card-img"><span style="font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);letter-spacing:2px;z-index:1;">BACKtotheART</span></div>
+      <div class="exp-card-body">
+        <div class="exp-card-title">Pack Complet</div>
+        <div class="exp-card-price">Forfait voyage + art</div>
+        <div class="exp-card-desc">Course VTC premium + expérience immersive au choix. Idéal pour aéroports, soirées gala, fashion week.</div>
+        <span class="exp-tag">Tout inclus</span><span class="exp-tag">Airport · Gala</span>
+        <div style="margin-top:14px;"><button class="btn btn-gold" onclick="reserverExperience('Pack BACKtotheART complet')" style="width:100%;justify-content:center;">Réserver</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="divider"></div>
+  <div style="margin-top:2rem;">
+    <div class="section-title" style="font-size:22px;">Calendrier de disponibilités</div>
+    <div class="section-sub">Réservation via Google Agenda</div>
+    <div style="background:var(--noir-card);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;">
+      <iframe src="https://calendar.google.com/calendar/embed?src=contact%40iovers.fr&ctz=Europe%2FParis&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=0&showCalendars=0&mode=WEEK&bgcolor=%230A0A0A&color=%23C9A84C" style="border:none;width:100%;height:420px;display:block;" frameborder="0" scrolling="no"></iframe>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     SECTION 3 — CONDUCTEUR
+══════════════════════════════════════ -->
+<section class="section" id="section-driver">
+  <div id="driver-lock">
+    <div class="section-title" style="margin-bottom:0.5rem;">Accès Conducteur</div>
+    <div class="section-sub" style="margin-bottom:2rem;">Espace réservé — iovers Mobility</div>
+    <input type="password" id="driver-pin" placeholder="• • • • • •" maxlength="6">
+    <button class="btn btn-gold" onclick="unlockDriver()" style="margin:0 auto;display:block;">Accéder</button>
+  </div>
+  <div id="driver-panel-content" style="display:none;">
+    <div class="section-title">Tableau de bord conducteur</div>
+    <div class="section-sub">Clément Saunier · Kia EV6 GT Line</div>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:2rem;">
+      <div class="card" style="flex:1;min-width:180px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">Courses aujourd'hui</div><div style="font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--gold);" id="stat-courses">0</div></div>
+      <div class="card" style="flex:1;min-width:180px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">CA estimé</div><div style="font-family:'Cormorant Garamond',serif;font-size:32px;color:var(--gold);" id="stat-ca">0 €</div></div>
+      <div class="card" style="flex:1;min-width:180px;"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">Statut</div><div style="margin-top:6px;" id="stat-status"><span class="badge badge-active">En ligne</span></div></div>
+    </div>
+    <div class="section-title" style="font-size:22px;margin-bottom:0.5rem;">Réservations en attente</div>
+    <div class="section-sub">Accepter déclenche Waze et valide le bon</div>
+    <div id="courses-list">
+      <div class="driver-panel" id="demo-course" style="display:none;">
+        <div class="driver-header">
+          <div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+              <span style="font-family:'Cormorant Garamond',serif;font-size:18px;" id="drv-client-name">—</span>
+              <span class="badge badge-pending" id="drv-status-badge">En attente</span>
+            </div>
+            <div class="driver-info"><strong id="drv-heure">—</strong> · <span id="drv-passagers">—</span> passager(s)</div>
+          </div>
+          <div style="text-align:right;"><div style="font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--gold);" id="drv-prix">—</div></div>
+        </div>
+        <div style="font-size:13px;margin:12px 0;">
+          <div style="color:var(--text-muted);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:4px;">Trajet</div>
+          <div><span style="color:var(--gold);">↑</span> <span id="drv-depart">—</span></div>
+          <div style="margin-top:4px;"><span style="color:var(--gold);">↓</span> <span id="drv-arrivee">—</span></div>
+        </div>
+        <div style="margin:1rem 0;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">Carte temps réel</div>
+            <div id="geo-status" style="font-size:11px;color:var(--text-muted);">GPS inactif</div>
+          </div>
+          <div id="driver-map" style="width:100%;height:260px;border-radius:4px;border:1px solid var(--border);background:var(--noir-mid);"></div>
+          <div style="display:flex;gap:0.75rem;margin-top:8px;flex-wrap:wrap;">
+            <button class="btn btn-outline" onclick="activerGPS()" id="btn-gps" style="font-size:10px;padding:8px 16px;">📍 Activer GPS</button>
+            <button class="btn btn-outline" onclick="localiserClient()" id="btn-localiser" style="font-size:10px;padding:8px 16px;" disabled>🎯 Localiser le client</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
+          <button class="btn btn-waze" id="btn-waze" onclick="lancerWaze()" disabled>Lancer Waze</button>
+          <button class="btn btn-success" id="btn-accepter" onclick="accepterCourse()">✓ Accepter</button>
+          <button class="btn btn-danger" id="btn-terminer" onclick="terminerCourse()" style="display:none;">■ Terminer</button>
+        </div>
+      </div>
+      <div id="no-courses" style="text-align:center;padding:3rem;color:var(--text-muted);">Aucune réservation en attente.</div>
+    </div>
+    <div id="facture-section" style="display:none;">
+      <div class="divider"></div>
+      <div class="section-title" style="font-size:22px;">Facture générée</div>
+      <div class="facture-box" id="facture-driver" style="display:block;">
+        <div class="facture-header">
+          <div><h1 style="color:#C9A84C;">FACTURE</h1><p style="font-size:11px;color:#666;">N° <span id="fac2-ref"></span></p></div>
+          <div style="text-align:right;"><strong>IOVERS MOBILITY SAS</strong><br><span style="font-size:11px;color:#666;">SIREN 989 372 529<br>contact@iovers.fr</span></div>
+        </div>
+        <div><strong>Client :</strong> <span id="fac2-client">—</span></div>
+        <div><strong>Date :</strong> <span id="fac2-date">—</span></div>
+        <div><strong>Trajet :</strong> <span id="fac2-trajet">—</span></div>
+        <table class="facture-table">
+          <thead><tr><th>Prestation</th><th>Détail</th><th style="text-align:right;">TTC</th></tr></thead>
+          <tbody id="fac2-tbody"></tbody>
+        </table>
+        <div class="facture-total" id="fac2-total"></div>
+        <div style="margin-top:1rem;text-align:center;">
+          <button class="btn btn-gold" onclick="envoyerFacture()">Envoyer par email</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ══════════════════════════════════════
+     SECTION 4 — VTC IMMERSIF
+══════════════════════════════════════ -->
+<section class="section" id="section-vtcimmersif">
+  <div class="section-title">VTC Immersif Paris IDF</div>
+  <div class="section-sub">BACKtotheART · Service unique en Île-de-France</div>
+  <p style="font-size:14px;color:var(--text-muted);line-height:1.8;max-width:580px;margin-bottom:2rem;">iovers Mobility propose le premier service de VTC premium avec expérience de réalité virtuelle immersive à bord. Disponible sur tout Paris et l'Île-de-France.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+    <div class="card"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">Zone de service</div><div style="font-size:14px;color:var(--text-primary);line-height:1.8;">Paris · Hauts-de-Seine<br>Val-de-Marne · Seine-Saint-Denis<br>CDG · Orly · Le Bourget</div></div>
+    <div class="card"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">Véhicule</div><div style="font-size:14px;color:var(--text-primary);line-height:1.8;">Kia EV6 GT Line Premium<br>100% Électrique · GC-725-QY</div></div>
+    <div class="card"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">Expériences à bord</div><div style="font-size:14px;color:var(--text-primary);line-height:1.8;">Meta Quest 3 · 180° & 360°<br>Van Gogh · Art contemporain</div></div>
+    <div class="card"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">Tarifs</div><div style="font-size:14px;color:var(--text-primary);line-height:1.8;">À partir de 20 €<br>2 €/km · Nuit/WE +20%<br>VR en option +50 €</div></div>
+  </div>
+  <div class="btn-row" style="margin-top:2rem;">
+    <button class="btn btn-gold" onclick="showSection('reservation')">Réserver maintenant</button>
+    <a href="tel:+33610913692" class="btn btn-outline" style="text-decoration:none;">📞 +33 6 10 91 36 92</a>
+  </div>
+</section>
+
+
+<script>
+// ══════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════
+const CONFIG = {
+  GOOGLE_MAPS_API_KEY: 'AIzaSyDZtcNWyBBecS9jRXvB6USFRIF3830S4Pw',
+  EMAIL_SOCIETE:       'c.saunier@iovers.fr',
+  DRIVER_PIN:          '090916',
+  IMMATRICULATION:     'GC-725-QY',
+  TARIF_KM:            2.00,
+  TARIF_MINIMUM:       20.00,
+  TARIF_ATTENTE_H:     30.00,
+  SUPPLEMENT_NUIT:     0.20,
+  FORFAIT_IMMERSIVE:   50.00,
+  STRIPE_PK:           'pk_test_51RofLA0zg3kYJbQDgr9D8bRjFTB6ND1mdCqXgcoaAKtZYbWDOrz0GhH46Ia8pc5F8P8REWT4P01coxvW7tF5FkAw00tFMlkatm',
+};
+
+// ══════════════════════════════════════
+// ÉTAT GLOBAL
+// ══════════════════════════════════════
+let state = { reservations: [], currentReservation: null, courseActive: false, stats: { courses: 0, ca: 0 } };
+
+function loadState()  { try { const s = sessionStorage.getItem('iovers_state'); if (s) state = { ...state, ...JSON.parse(s) }; } catch(e) {} }
+function saveState()  { try { sessionStorage.setItem('iovers_state', JSON.stringify(state)); } catch(e) {} }
+
+// ══════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════
+function showSection(id) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  const tabs = document.querySelectorAll('.nav-tab');
+  const idx  = ['reservation','experiences','driver','vtcimmersif'].indexOf(id);
+  if (tabs[idx]) tabs[idx].classList.add('active');
+  if (id === 'driver') refreshDriverView();
+}
+
+// ══════════════════════════════════════
+// GOOGLE MAPS — Autocomplete (callback)
+// ══════════════════════════════════════
+let autocompleteDepart  = null;
+let autocompleteArrivee = null;
+let placeDepart         = null;
+let placeArrivee        = null;
+let driverMap           = null;
+let driverMarker        = null;
+let clientMarker        = null;
+let geoWatchId          = null;
+let directionsService   = null;
+let directionsRenderer  = null;
+
+// Appelé automatiquement par le script Google Maps via &callback=initAutocomplete
+function initAutocomplete() {
+  console.log('[iovers] Google Maps chargé — initAutocomplete()');
+
+  // ── Autocomplete DÉPART ──
+  autocompleteDepart = new google.maps.places.Autocomplete(
+    document.getElementById('depart'), {
+      componentRestrictions: { country: 'fr' },
+      fields: ['formatted_address', 'geometry'],
+      types: ['address']
+    }
+  );
+  autocompleteDepart.addListener('place_changed', () => {
+    placeDepart = autocompleteDepart.getPlace();
+    if (placeDepart.geometry) {
+      document.getElementById('depart').style.borderColor = '#50E090';
+      document.getElementById('depart-ok').style.display  = 'block';
+      if (placeArrivee) calculerDistanceAuto();
+    }
+  });
+
+  // ── Autocomplete ARRIVÉE ──
+  autocompleteArrivee = new google.maps.places.Autocomplete(
+    document.getElementById('arrivee'), {
+      componentRestrictions: { country: 'fr' },
+      fields: ['formatted_address', 'geometry'],
+      types: ['address']
+    }
+  );
+  autocompleteArrivee.addListener('place_changed', () => {
+    placeArrivee = autocompleteArrivee.getPlace();
+    if (placeArrivee.geometry) {
+      document.getElementById('arrivee').style.borderColor = '#50E090';
+      document.getElementById('arrivee-ok').style.display  = 'block';
+      if (placeDepart) calculerDistanceAuto();
+    }
+  });
+
+  // ── Carte conducteur ──
+  const mapDiv = document.getElementById('driver-map');
+  if (mapDiv) {
+    driverMap = new google.maps.Map(mapDiv, {
+      center: { lat: 48.8566, lng: 2.3522 }, zoom: 13,
+      styles: [
+        { elementType: 'geometry',           stylers: [{ color: '#0a0a0a' }] },
+        { elementType: 'labels.text.fill',   stylers: [{ color: '#8A8070' }] },
+        { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0a0a' }] },
+        { featureType: 'road', elementType: 'geometry',        stylers: [{ color: '#1a1a1a' }] },
+        { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#2a2010' }] },
+        { featureType: 'water', elementType: 'geometry',       stylers: [{ color: '#040D1A' }] },
+        { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      ],
+      disableDefaultUI: true, zoomControl: true,
+    });
+    directionsService  = new google.maps.DirectionsService();
+    directionsRenderer = new google.maps.DirectionsRenderer({
+      map: driverMap, suppressMarkers: true,
+      polylineOptions: { strokeColor: '#C9A84C', strokeWeight: 3 }
+    });
+  }
+
+  console.log('[iovers] Autocomplete opérationnel sur les deux champs adresse');
+}
+
+// ── Calcul distance automatique (après sélection autocomplete) ──
+function calculerDistanceAuto() {
+  if (!placeDepart?.geometry || !placeArrivee?.geometry) return;
+  document.getElementById('distance-result-box').style.display = 'block';
+  document.getElementById('distance-display').textContent = '…';
+  document.getElementById('duree-display').textContent    = 'Calcul en cours';
+  document.getElementById('btn-generer').disabled = true;
+
+  new google.maps.DistanceMatrixService().getDistanceMatrix({
+    origins:      [placeDepart.geometry.location],
+    destinations: [placeArrivee.geometry.location],
+    travelMode:   google.maps.TravelMode.DRIVING,
+    unitSystem:   google.maps.UnitSystem.METRIC,
+    region: 'fr',
+  }, (response, status) => {
+    if (status !== 'OK') { showToast('Erreur calcul distance.'); document.getElementById('btn-generer').disabled = false; return; }
+    const el = response.rows[0].elements[0];
+    if (el.status !== 'OK') { showToast('Itinéraire impossible.'); document.getElementById('btn-generer').disabled = false; return; }
+    const km  = el.distance.value / 1000;
+    const dur = el.duration.text;
+    document.getElementById('distance').value              = km.toFixed(1);
+    document.getElementById('distance-display').textContent = km.toFixed(1) + ' km';
+    document.getElementById('duree-display').textContent   = dur + ' en voiture';
+    updatePrice();
+    document.getElementById('price-box').style.display  = 'block';
+    document.getElementById('btn-generer').disabled = false;
+    if (driverMap && directionsService) {
+      directionsService.route({ origin: placeDepart.geometry.location, destination: placeArrivee.geometry.location, travelMode: google.maps.TravelMode.DRIVING }, (result, status) => { if (status === 'OK') directionsRenderer.setDirections(result); });
+    }
+    showToast('✓ ' + km.toFixed(1) + ' km · ' + dur + ' · Prix calculé');
+  });
+}
+
+// ── Calcul distance manuel via fetch REST (fallback) ──
+async function calculerDistanceManuel() {
+  const dep = document.getElementById('depart').value.trim();
+  const arr = document.getElementById('arrivee').value.trim();
+  if (!dep || !arr) { showToast('Saisissez les deux adresses.'); return; }
+
+  document.getElementById('distance-result-box').style.display = 'block';
+  document.getElementById('distance-display').textContent = '…';
+  document.getElementById('duree-display').textContent    = 'Calcul en cours';
+  document.getElementById('btn-calc-dist').disabled = true;
+
+  try {
+    const key = CONFIG.GOOGLE_MAPS_API_KEY;
+    const [gD, gA] = await Promise.all([
+      fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(dep)}&key=${key}&region=fr`).then(r=>r.json()),
+      fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(arr)}&key=${key}&region=fr`).then(r=>r.json())
+    ]);
+    if (gD.status !== 'OK' || gA.status !== 'OK') { showToast('Adresses non trouvées — soyez plus précis.'); document.getElementById('btn-calc-dist').disabled = false; return; }
+    const locD = gD.results[0].geometry.location;
+    const locA = gA.results[0].geometry.location;
+    const dm   = await fetch(`https://maps.googleapis.com/maps/api/distancematrix/json?origins=${locD.lat},${locD.lng}&destinations=${locA.lat},${locA.lng}&mode=driving&language=fr&key=${key}`).then(r=>r.json());
+    const el   = dm.rows[0].elements[0];
+    if (el.status !== 'OK') { showToast('Itinéraire impossible entre ces adresses.'); document.getElementById('btn-calc-dist').disabled = false; return; }
+    const km  = el.distance.value / 1000;
+    const dur = el.duration.text;
+    document.getElementById('distance').value              = km.toFixed(1);
+    document.getElementById('distance-display').textContent = km.toFixed(1) + ' km';
+    document.getElementById('duree-display').textContent   = dur + ' en voiture';
+    updatePrice();
+    document.getElementById('price-box').style.display  = 'block';
+    document.getElementById('btn-generer').disabled = false;
+    showToast('✓ ' + km.toFixed(1) + ' km · ' + dur);
+  } catch(e) {
+    showToast('Erreur réseau — vérifiez votre connexion.');
+  }
+  document.getElementById('btn-calc-dist').disabled = false;
+}
+
+// ══════════════════════════════════════
+// TARIFICATION AUTOMATIQUE NUIT/WEEKEND
+// ══════════════════════════════════════
+function appliquerTarifAuto() {
+  const dateVal = document.getElementById('date-course').value;
+  const heureVal= document.getElementById('heure-course').value;
+  const select  = document.getElementById('type-course');
+  if (!dateVal || !heureVal) return;
+  const date   = new Date(dateVal + 'T' + heureVal);
+  const h      = date.getHours();
+  const j      = date.getDay();
+  const isNuit = h >= 22 || h < 6;
+  const isWeek = j === 0 || j === 6;
+  if (isNuit || isWeek) {
+    select.value = 'nuit';
+    const label  = (isNuit && isWeek) ? 'Nuit + Weekend (+20%)' : isNuit ? 'Nuit (+20%)' : 'Weekend (+20%)';
+    let badge = document.getElementById('tarif-auto-badge');
+    if (!badge) { badge = document.createElement('div'); badge.id = 'tarif-auto-badge'; badge.style.cssText = 'font-size:11px;color:#C9A84C;letter-spacing:1px;margin-top:4px;'; select.parentNode.appendChild(badge); }
+    badge.textContent = '⚡ ' + label + ' appliqué automatiquement';
+  } else {
+    select.value = 'standard';
+    const badge = document.getElementById('tarif-auto-badge');
+    if (badge) badge.textContent = '';
+  }
+  updatePrice();
+}
+document.getElementById('date-course').addEventListener('change', appliquerTarifAuto);
+document.getElementById('heure-course').addEventListener('change', appliquerTarifAuto);
+
+// ══════════════════════════════════════
+// TARIFICATION
+// ══════════════════════════════════════
+function updatePrice() {
+  const dist = parseFloat(document.getElementById('distance').value) || 0;
+  const type = document.getElementById('type-course').value;
+  if (dist <= 0) return;
+  const pec = CONFIG.TARIF_MINIMUM, km_cost = dist * CONFIG.TARIF_KM;
+  let base = Math.max(pec, km_cost), supp = 0;
+  document.getElementById('row-supplement').style.display = 'none';
+  document.getElementById('row-immersive').style.display  = 'none';
+  if (type === 'nuit') { supp = base * CONFIG.SUPPLEMENT_NUIT; document.getElementById('row-supplement').style.display = 'flex'; document.getElementById('p-supp').textContent = '+' + supp.toFixed(2) + ' €'; }
+  if (type === 'immersive') { document.getElementById('row-immersive').style.display = 'flex'; base += CONFIG.FORFAIT_IMMERSIVE; }
+  if (type === 'attente') base = dist * CONFIG.TARIF_ATTENTE_H;
+  const total = base + supp;
+  document.getElementById('price-box').style.display   = 'block';
+  document.getElementById('p-pec').textContent         = pec.toFixed(2) + ' €';
+  document.getElementById('p-dist-label').textContent  = dist.toFixed(1);
+  document.getElementById('p-dist').textContent        = km_cost.toFixed(2) + ' €';
+  document.getElementById('p-total').textContent       = total.toFixed(2) + ' €';
+  return total;
+}
+
+// ══════════════════════════════════════
+// BON DE COMMANDE
+// ══════════════════════════════════════
+function genererBon() {
+  const nom     = document.getElementById('client-nom').value.trim();
+  const tel     = document.getElementById('client-tel').value.trim();
+  const email   = document.getElementById('client-email').value.trim();
+  const depart  = document.getElementById('depart').value.trim();
+  const arrivee = document.getElementById('arrivee').value.trim();
+  const date    = document.getElementById('date-course').value;
+  const heure   = document.getElementById('heure-course').value;
+  const passagers = document.getElementById('nb-passagers').value;
+  const typeEl  = document.getElementById('type-course');
+  const dist    = parseFloat(document.getElementById('distance').value) || 0;
+  if (!nom || !email || !depart || !arrivee || !date || !heure) { showToast('Veuillez remplir tous les champs obligatoires.'); return; }
+  if (dist <= 0) { showToast('Veuillez calculer la distance avant de générer le bon.'); return; }
+  const total = updatePrice();
+  const ref   = 'IOM-' + Date.now().toString(36).toUpperCase();
+  const now   = new Date();
+  document.getElementById('bon-client').textContent    = nom;
+  document.getElementById('bon-tel').textContent       = tel || '—';
+  document.getElementById('bon-depart').textContent    = depart;
+  document.getElementById('bon-arrivee').textContent   = arrivee;
+  document.getElementById('bon-datetime').textContent  = formatDate(date) + ' à ' + heure;
+  document.getElementById('bon-passagers').textContent = passagers + ' passager(s)';
+  document.getElementById('bon-type').textContent      = typeEl.options[typeEl.selectedIndex].text;
+  document.getElementById('bon-distance').textContent  = dist.toFixed(1) + ' km (estimée)';
+  document.getElementById('bon-total-text').textContent= 'Prix estimé TTC : ' + (total||0).toFixed(2) + ' €';
+  document.getElementById('bon-sig-client').textContent= nom;
+  document.getElementById('bon-sig-date').textContent  = now.toLocaleDateString('fr-FR');
+  document.getElementById('bon-ref').textContent       = 'Référence : ' + ref;
+  document.getElementById('bon-immat').textContent     = CONFIG.IMMATRICULATION;
+  document.getElementById('bon-preview').style.display     = 'block';
+  document.getElementById('confirm-actions').style.display = 'flex';
+  state.currentReservation = { ref, nom, tel, email, depart, arrivee, date, heure, passagers: parseInt(passagers), type: typeEl.value, typeLabel: typeEl.options[typeEl.selectedIndex].text, dist, total: total||0, notes: document.getElementById('notes').value, status: 'pending', created: now.toISOString() };
+  document.getElementById('bon-preview').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  afficherPaiement(total||0, state.currentReservation);
+}
+
+// ══════════════════════════════════════
+// STRIPE
+// ══════════════════════════════════════
+let stripeInstance = null;
+
+function afficherPaiement(total, reservation) {
+  if (!total || total <= 0) return;
+  const priceTTC = Math.max(total, CONFIG.TARIF_MINIMUM);
+  const priceHT  = priceTTC / 1.10;
+  const tva      = priceTTC - priceHT;
+  document.getElementById('pay-amount').textContent = priceTTC.toFixed(2) + ' € TTC';
+  document.getElementById('pay-detail').innerHTML   = 'Course VTC iovers Mobility' + (reservation ? ' · ' + reservation.depart + ' → ' + reservation.arrivee : '') + '<br>HT : ' + priceHT.toFixed(2) + ' € · TVA 10% : ' + tva.toFixed(2) + ' €<br>Paiement 100% sécurisé par Stripe';
+  document.getElementById('payment-box').style.display = 'block';
+  document.getElementById('payment-box').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (!stripeInstance && typeof Stripe !== 'undefined') stripeInstance = Stripe(CONFIG.STRIPE_PK);
+}
+
+async function lancerPaiementStripe() {
+  const r = state.currentReservation;
+  if (!r) { showToast('Veuillez d\'abord générer le bon.'); return; }
+  const btn = document.getElementById('btn-stripe');
+  btn.disabled = true; btn.textContent = 'Connexion sécurisée…';
+  const result = await veloAction('CREER_SESSION_STRIPE', { montantCentimes: Math.round(r.total*100), ref: r.ref, nom: r.nom, email: r.email, description: 'Course VTC iovers — ' + r.depart + ' → ' + r.arrivee });
+  if (result.success && result.url) { window.top.location.href = result.url; }
+  else if (result.sessionId) { stripeInstance.redirectToCheckout({ sessionId: result.sessionId }); }
+  else { showToast('Enregistrement de votre réservation…'); btn.textContent = '💳 Payer ma course en ligne'; btn.disabled = false; await confirmerReservationApresPaiement(r); }
+}
+
+async function confirmerReservationApresPaiement(r) {
+  const result = await veloAction('CREER_RESERVATION', r);
+  if (result.success) {
+    document.getElementById('payment-box').style.display     = 'none';
+    document.getElementById('payment-success').style.display = 'block';
+    document.getElementById('confirm-actions').style.display = 'flex';
+    document.getElementById('success-ref').textContent = 'Réf : ' + r.ref + ' · Confirmation envoyée à ' + r.email;
+    state.reservations.push({ ...r, status: 'confirmed', wixId: result.id });
+    saveState();
+    showToast('✓ Réservation confirmée — Réf : ' + r.ref, 6000);
+  }
+}
+
+// ══════════════════════════════════════
+// BRIDGE WIX VELO
+// ══════════════════════════════════════
+function veloAction(action, payload) {
+  return new Promise((resolve) => {
+    const msgId   = 'vtc_' + Date.now();
+    const handler = (e) => { if (e.data && e.data.msgId === msgId) { window.removeEventListener('message', handler); resolve(e.data); } };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({ source: 'iovers-vtc', action, payload, msgId }, '*');
+    setTimeout(() => { window.removeEventListener('message', handler); resolve({ success: false, timeout: true }); }, 8000);
+  });
+}
+
+// ══════════════════════════════════════
+// PDF jsPDF
+// ══════════════════════════════════════
+function telechargerBon() {
+  const r = state.currentReservation;
+  if (!r) return;
+  if (!window.jspdf?.jsPDF) { showToast('PDF non disponible — utilisez Ctrl+P.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' }); const m=20,w=170; let y=m;
+  doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.text('BON DE COMMANDE PRÉALABLE VTC',105,y,{align:'center'}); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(120); doc.text('Décret n°2014-1531 · Article L3122-2 du Code des transports',105,y,{align:'center'}); y+=10;
+  doc.setDrawColor(201,168,76); doc.setLineWidth(0.5); doc.line(m,y,m+w,y); y+=8;
+  const addS = t => { doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0); doc.text(t.toUpperCase(),m,y); y+=5; };
+  const addR = (l,v) => { doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60); doc.text(String(l),m,y); doc.setTextColor(0); doc.text(String(v),m+70,y); y+=5; };
+  addS('Opérateur'); addR('Raison sociale','IOVERS MOBILITY SAS'); addR('SIREN','989 372 529'); addR('Contact','contact@iovers.fr'); addR('Assureur','Allianz'); y+=4;
+  addS('Chauffeur'); addR('Nom','Saunier Clément Pierre André'); addR('Carte VTC','09225082001 · valide 03/06/2030'); y+=4;
+  addS('Véhicule'); addR('Modèle','Kia EV6 GT Line — Premium Électrique'); addR('Immat.',CONFIG.IMMATRICULATION); y+=4;
+  addS('Course'); addR('Client',r.nom); addR('Départ',r.depart); addR('Arrivée',r.arrivee); addR('Date / Heure',formatDate(r.date)+' à '+r.heure); addR('Type',r.typeLabel); addR('Distance',r.dist.toFixed(1)+' km'); y+=4;
+  doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.text('PRIX ESTIMÉ TTC : '+r.total.toFixed(2)+' €',m+w,y,{align:'right'}); y+=10;
+  doc.setDrawColor(201,168,76); doc.line(m,y,m+w,y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(100);
+  doc.text('Référence : '+r.ref+' — Généré le '+new Date().toLocaleDateString('fr-FR'),m,y);
+  doc.save('Bon-VTC-'+r.ref+'.pdf');
+}
+
+// ══════════════════════════════════════
+// CONDUCTEUR
+// ══════════════════════════════════════
+function unlockDriver() {
+  const pin = document.getElementById('driver-pin').value;
+  if (pin === CONFIG.DRIVER_PIN) { document.getElementById('driver-lock').style.display='none'; document.getElementById('driver-panel-content').style.display='block'; refreshDriverView(); }
+  else { showToast('Code incorrect.'); document.getElementById('driver-pin').value=''; }
+}
+
+function refreshDriverView() {
+  loadState();
+  const reservations = state.reservations.filter(r => r.status === 'confirmed');
+  const today = new Date().toISOString().slice(0,10);
+  const todayCourses = state.reservations.filter(r => r.date === today);
+  document.getElementById('stat-courses').textContent = todayCourses.length;
+  document.getElementById('stat-ca').textContent = todayCourses.reduce((a,r)=>a+(r.total||0),0).toFixed(0)+' €';
+  if (reservations.length > 0) {
+    const r = reservations[reservations.length-1];
+    document.getElementById('no-courses').style.display  = 'none';
+    document.getElementById('demo-course').style.display = 'block';
+    document.getElementById('drv-client-name').textContent = r.nom;
+    document.getElementById('drv-heure').textContent       = formatDate(r.date)+' · '+r.heure;
+    document.getElementById('drv-passagers').textContent   = r.passagers;
+    document.getElementById('drv-prix').textContent        = r.total.toFixed(2)+' €';
+    document.getElementById('drv-depart').textContent      = r.depart;
+    document.getElementById('drv-arrivee').textContent     = r.arrivee;
+    document.getElementById('btn-accepter').style.display  = 'inline-flex';
+    document.getElementById('btn-terminer').style.display  = 'none';
+    document.getElementById('btn-waze').disabled           = true;
+    document.getElementById('drv-status-badge').textContent = 'En attente';
+    document.getElementById('drv-status-badge').className   = 'badge badge-pending';
+    state.currentReservation = r;
+  } else { document.getElementById('no-courses').style.display='block'; document.getElementById('demo-course').style.display='none'; }
+}
+
+function accepterCourse() {
+  const r = state.currentReservation; if (!r) return;
+  const idx = state.reservations.findIndex(x=>x.ref===r.ref);
+  if (idx>=0) state.reservations[idx].status='active';
+  state.courseActive=true; saveState();
+  veloAction('MAJ_STATUT',{ref:r.ref,statut:'active'});
+  document.getElementById('drv-status-badge').textContent='Course active'; document.getElementById('drv-status-badge').className='badge badge-active';
+  document.getElementById('btn-accepter').style.display='none'; document.getElementById('btn-terminer').style.display='inline-flex';
+  document.getElementById('btn-waze').disabled=false;
+  showToast('✓ Course acceptée — Waze prêt');
+}
+
+function lancerWaze() {
+  const r=state.currentReservation; if(!r) return;
+  window.open('https://waze.com/ul?q='+encodeURIComponent(r.arrivee)+'&navigate=yes','_blank');
+}
+
+function terminerCourse() {
+  const r=state.currentReservation; if(!r) return;
+  const idx=state.reservations.findIndex(x=>x.ref===r.ref);
+  if(idx>=0){state.reservations[idx].status='done';state.reservations[idx].endTime=new Date().toISOString();}
+  state.courseActive=false; state.stats.courses++; state.stats.ca+=r.total; saveState();
+  veloAction('MAJ_STATUT',{ref:r.ref,statut:'done'});
+  document.getElementById('drv-status-badge').textContent='Terminée'; document.getElementById('drv-status-badge').className='badge badge-done';
+  document.getElementById('btn-terminer').style.display='none'; document.getElementById('btn-waze').style.display='none';
+  genererFactureDriver(r); document.getElementById('facture-section').style.display='block';
+  document.getElementById('facture-section').scrollIntoView({behavior:'smooth'});
+  showToast('■ Course terminée — Facture générée');
+}
+
+function genererFactureDriver(r) {
+  document.getElementById('fac2-ref').textContent    = 'FAC-'+r.ref;
+  document.getElementById('fac2-client').textContent = r.nom+' · '+r.email;
+  document.getElementById('fac2-date').textContent   = formatDate(r.date)+' à '+r.heure;
+  document.getElementById('fac2-trajet').textContent = r.depart+' → '+r.arrivee;
+  const tbody=document.getElementById('fac2-tbody'); tbody.innerHTML='';
+  const rows=[['Prise en charge','Forfait minimum',CONFIG.TARIF_MINIMUM.toFixed(2)+' €'],['Transport',r.dist.toFixed(1)+' km × '+CONFIG.TARIF_KM.toFixed(2)+' €/km',(r.dist*CONFIG.TARIF_KM).toFixed(2)+' €']];
+  if(r.type==='immersive') rows.push(['Expérience VR','BACKtotheART',CONFIG.FORFAIT_IMMERSIVE.toFixed(2)+' €']);
+  if(r.type==='nuit') rows.push(['Supplément nuit/WE','+20%',(r.total*0.2/1.2).toFixed(2)+' €']);
+  rows.forEach(([p,d,m])=>{ tbody.innerHTML+='<tr><td>'+p+'</td><td style="color:#666">'+d+'</td><td style="text-align:right">'+m+'</td></tr>'; });
+  document.getElementById('fac2-total').textContent='TOTAL TTC : '+r.total.toFixed(2)+' €';
+}
+
+function envoyerFacture() {
+  const r=state.currentReservation||state.reservations.filter(x=>x.status==='done').slice(-1)[0]; if(!r) return;
+  const s=encodeURIComponent('Facture VTC — FAC-'+r.ref);
+  const c=encodeURIComponent('Bonjour '+r.nom+',\n\nMerci pour votre confiance.\n\nCourse du '+formatDate(r.date)+' à '+r.heure+'\nTrajet : '+r.depart+' → '+r.arrivee+'\nMontant TTC : '+r.total.toFixed(2)+' €\nRéférence : FAC-'+r.ref+'\n\niovers Mobility · contact@iovers.fr · SIREN 989 372 529');
+  window.location.href='mailto:'+r.email+'?cc=contact@iovers.fr&subject='+s+'&body='+c;
+  showToast('Email facture ouvert');
+}
+
+// ══════════════════════════════════════
+// GPS CONDUCTEUR
+// ══════════════════════════════════════
+function activerGPS() {
+  if (!navigator.geolocation) { showToast('Géolocalisation non supportée.'); return; }
+  document.getElementById('geo-status').textContent='GPS en cours…'; document.getElementById('geo-status').style.color='#C9A84C';
+  geoWatchId = navigator.geolocation.watchPosition(
+    (pos) => {
+      const lat=pos.coords.latitude, lng=pos.coords.longitude, latlng={lat,lng};
+      document.getElementById('geo-status').textContent='📍 GPS actif — '+lat.toFixed(4)+', '+lng.toFixed(4);
+      document.getElementById('geo-status').style.color='#50E090';
+      document.getElementById('btn-localiser').disabled=false;
+      if (driverMap && window.google) {
+        if (!driverMarker) { driverMarker = new google.maps.Marker({ position:latlng, map:driverMap, icon:{path:google.maps.SymbolPath.FORWARD_CLOSED_ARROW,scale:6,fillColor:'#C9A84C',fillOpacity:1,strokeColor:'#0A0A0A',strokeWeight:2}, title:'Votre position', zIndex:10 }); }
+        else driverMarker.setPosition(latlng);
+        driverMap.panTo(latlng);
+      }
+      window.parent.postMessage({source:'iovers-vtc',action:'MAJ_POSITION_GPS',payload:{lat,lng,ts:Date.now()}},'*');
+    },
+    (err) => { document.getElementById('geo-status').textContent='Erreur GPS — '+err.message; document.getElementById('geo-status').style.color='#E24B4A'; },
+    { enableHighAccuracy:true, maximumAge:3000, timeout:10000 }
+  );
+  document.getElementById('btn-gps').textContent='⏹ Désactiver GPS';
+  document.getElementById('btn-gps').onclick=desactiverGPS;
+}
+
+function desactiverGPS() {
+  if (geoWatchId!==null){navigator.geolocation.clearWatch(geoWatchId);geoWatchId=null;}
+  document.getElementById('geo-status').textContent='GPS inactif'; document.getElementById('geo-status').style.color='var(--text-muted)';
+  document.getElementById('btn-gps').textContent='📍 Activer GPS'; document.getElementById('btn-gps').onclick=activerGPS;
+}
+
+function localiserClient() {
+  const r=state.currentReservation; if(!r||!r.depart||!window.google){showToast('Aucune réservation active.');return;}
+  new google.maps.Geocoder().geocode({address:r.depart,region:'fr'},(results,status)=>{
+    if(status!=='OK'||!results[0]){showToast('Adresse client introuvable.');return;}
+    const pos=results[0].geometry.location;
+    if(!clientMarker){clientMarker=new google.maps.Marker({position:pos,map:driverMap,icon:{path:google.maps.SymbolPath.CIRCLE,scale:10,fillColor:'#50E090',fillOpacity:1,strokeColor:'#0A0A0A',strokeWeight:2},title:'Client',zIndex:9});}
+    else clientMarker.setPosition(pos);
+    if(driverMarker){const b=new google.maps.LatLngBounds();b.extend(driverMarker.getPosition());b.extend(pos);driverMap.fitBounds(b);}
+    else{driverMap.panTo(pos);driverMap.setZoom(15);}
+    showToast('Client localisé : '+r.nom);
+  });
+}
+
+// ══════════════════════════════════════
+// MULTILINGUE
+// ══════════════════════════════════════
+const TRAD = {
+  fr:{'lbl-nom':'Prénom & Nom','lbl-tel':'Téléphone','lbl-email':'Email','lbl-depart':'Adresse de départ','lbl-arrivee':'Adresse d\'arrivée','lbl-date':'Date de course','lbl-heure':'Heure de prise en charge','lbl-passagers':'Nombre de passagers','lbl-type':'Type de course','lbl-notes':'Notes / Demandes spéciales'},
+  en:{'lbl-nom':'Full Name','lbl-tel':'Phone','lbl-email':'Email','lbl-depart':'Pickup Address','lbl-arrivee':'Destination Address','lbl-date':'Trip Date','lbl-heure':'Pickup Time','lbl-passagers':'Passengers','lbl-type':'Trip Type','lbl-notes':'Notes / Special Requests'}
+};
+function changerLangue(lang) { const t=TRAD[lang]||TRAD.fr; Object.entries(t).forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; }); }
+
+// ══════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y,m,d]=dateStr.split('-');
+  return d+' '+['jan.','fév.','mars','avr.','mai','juin','juil.','août','sep.','oct.','nov.','déc.'][parseInt(m)-1]+' '+y;
+}
+
+function showToast(msg, duration=4000) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), duration);
+}
+
+// ══════════════════════════════════════
+// INIT
+// ══════════════════════════════════════
+const today = new Date().toISOString().split('T')[0];
+document.getElementById('date-course').min   = today;
+document.getElementById('date-course').value = today;
+loadState();
+
+// Retour paiement Stripe
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('paiement') === 'succes') {
+  const ref = urlParams.get('ref');
+  document.getElementById('payment-success').style.display = 'block';
+  if (ref) { document.getElementById('success-ref').textContent = 'Réf : ' + ref + ' · Paiement confirmé !'; }
+}
+</script>
+</body>
+</html>
