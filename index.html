@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://js.stripe.com/v3/"></script>
+<script async src="https://js.stripe.com/v3/buy-button.js"></script>
 <!-- Google Maps avec callback — chargement propre hors Wix -->
 <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDZtcNWyBBecS9jRXvB6USFRIF3830S4Pw&libraries=places,geometry&callback=initAutocomplete" async defer></script>
 <style>
@@ -362,8 +363,16 @@
     <div class="payment-box-title">Paiement sécurisé — Stripe</div>
     <div class="payment-amount" id="pay-amount">—</div>
     <div class="payment-detail" id="pay-detail">Course VTC iovers Mobility<br>TVA 10% incluse · Paiement 100% sécurisé</div>
-    <button class="btn btn-stripe" id="btn-stripe" onclick="lancerPaiementStripe()">💳 Payer ma course en ligne</button>
-    <div style="display:flex;align-items:center;gap:8px;margin-top:1rem;justify-content:center;">
+
+    <!-- Stripe Buy Button natif — clé LIVE -->
+    <div style="display:flex;justify-content:center;margin:1.25rem 0;" id="stripe-btn-container">
+      <stripe-buy-button
+        buy-button-id="buy_btn_1TGRSA0zg3kYJbQDbrVAu2I9"
+        publishable-key="pk_live_51RofLA0zg3kYJbQDgl1c1pTTcos0dRWCaKuDWHHCfnl6SIuxgNIWt4TQu4gAy3ghdhpRHSQQYT8wHGD17U05eOeT00ygyh2GX7"
+      ></stripe-buy-button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;margin-top:0.5rem;justify-content:center;">
       <span style="font-size:10px;color:var(--text-muted);">SÉCURISÉ PAR</span>
       <span style="font-size:12px;color:#635BFF;font-weight:500;">stripe</span>
       <span style="font-size:10px;color:var(--text-muted);">· Visa · Mastercard · Apple Pay · Google Pay</span>
@@ -838,12 +847,26 @@ function afficherPaiement(total, reservation) {
 async function lancerPaiementStripe() {
   const r = state.currentReservation;
   if (!r) { showToast('Veuillez d\'abord générer le bon.'); return; }
+
   const btn = document.getElementById('btn-stripe');
-  btn.disabled = true; btn.textContent = 'Connexion sécurisée…';
-  const result = await veloAction('CREER_SESSION_STRIPE', { montantCentimes: Math.round(r.total*100), ref: r.ref, nom: r.nom, email: r.email, description: 'Course VTC iovers — ' + r.depart + ' → ' + r.arrivee });
-  if (result.success && result.url) { window.top.location.href = result.url; }
-  else if (result.sessionId) { stripeInstance.redirectToCheckout({ sessionId: result.sessionId }); }
-  else { showToast('Enregistrement de votre réservation…'); btn.textContent = '💳 Payer ma course en ligne'; btn.disabled = false; await confirmerReservationApresPaiement(r); }
+  btn.disabled = true;
+  btn.textContent = 'Redirection vers le paiement…';
+
+  // Sauvegarder la réservation localement
+  saveState();
+
+  // Tenter d'enregistrer dans Wix (non bloquant)
+  veloAction('CREER_RESERVATION', r).catch(() => {});
+
+  // Stripe Payment Link avec préfill email et référence
+  const params = new URLSearchParams({
+    prefilled_email:     r.email,
+    client_reference_id: r.ref,
+  });
+  const url = 'https://buy.stripe.com/fZu28jcwy0gAdYu7Py8IU00?' + params.toString();
+
+  // Redirection top-level pour sortir de l'iFrame
+  window.top.location.href = url;
 }
 
 async function confirmerReservationApresPaiement(r) {
