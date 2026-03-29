@@ -364,13 +364,10 @@
     <div class="payment-amount" id="pay-amount">—</div>
     <div class="payment-detail" id="pay-detail">Course VTC iovers Mobility<br>TVA 10% incluse · Paiement 100% sécurisé</div>
 
-    <!-- Stripe Buy Button natif — clé LIVE -->
-    <div style="display:flex;justify-content:center;margin:1.25rem 0;" id="stripe-btn-container">
-      <stripe-buy-button
-        buy-button-id="buy_btn_1TGRSA0zg3kYJbQDbrVAu2I9"
-        publishable-key="pk_live_51RofLA0zg3kYJbQDgl1c1pTTcos0dRWCaKuDWHHCfnl6SIuxgNIWt4TQu4gAy3ghdhpRHSQQYT8wHGD17U05eOeT00ygyh2GX7"
-      ></stripe-buy-button>
-    </div>
+    <!-- Bouton paiement Stripe — montant pré-rempli automatiquement -->
+    <button class="btn btn-stripe" id="btn-stripe" onclick="lancerPaiementStripe()">
+      💳 Payer ma course en ligne
+    </button>
 
     <div style="display:flex;align-items:center;gap:8px;margin-top:0.5rem;justify-content:center;">
       <span style="font-size:10px;color:var(--text-muted);">SÉCURISÉ PAR</span>
