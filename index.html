@@ -376,11 +376,70 @@
     </div>
   </div>
 
+  <!-- CONFIRMATION PAIEMENT -->
   <div class="payment-success" id="payment-success">
-    <div style="font-size:32px;margin-bottom:0.5rem;">✓</div>
-    <div style="font-family:'Cormorant Garamond',serif;font-size:20px;color:#50E090;margin-bottom:0.5rem;">Paiement confirmé !</div>
-    <div style="font-size:13px;color:var(--text-muted);" id="success-ref">Votre réservation est enregistrée.</div>
-    <div style="margin-top:1rem;"><button class="btn btn-outline" onclick="telechargerBon()" style="font-size:11px;">↓ Télécharger le bon</button></div>
+    <div style="font-size:40px;margin-bottom:0.5rem;">✓</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#50E090;margin-bottom:0.5rem;">Paiement confirmé !</div>
+    <div style="font-size:13px;color:var(--text-muted);margin-bottom:1rem;" id="success-ref">Votre réservation est enregistrée.</div>
+    <button class="btn btn-outline" onclick="telechargerBon()" style="font-size:11px;margin-bottom:1rem;">↓ Télécharger le bon de commande</button>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:0.5rem;">Un email de confirmation vous a été envoyé.</div>
+  </div>
+
+  <!-- POST-COURSE — Pourboire + Évaluations -->
+  <div id="post-course-box" style="display:none;margin-top:2rem;">
+    <div style="background:var(--noir-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:2rem;">
+
+      <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--text-gold);margin-bottom:0.25rem;">Après votre course</div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:26px;margin-bottom:2rem;">Merci de votre confiance</div>
+
+      <!-- POURBOIRE -->
+      <div style="margin-bottom:2rem;">
+        <div style="font-size:13px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.75rem;">Laisser un pourboire ?</div>
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+          <button class="btn btn-outline" onclick="selectionnerPourboire(0)"  id="tip-0"  style="font-size:11px;padding:10px 20px;">Non merci</button>
+          <button class="btn btn-outline" onclick="selectionnerPourboire(5)"  id="tip-5"  style="font-size:11px;padding:10px 20px;">5 €</button>
+          <button class="btn btn-outline" onclick="selectionnerPourboire(10)" id="tip-10" style="font-size:11px;padding:10px 20px;">10 €</button>
+          <button class="btn btn-outline" onclick="selectionnerPourboire(20)" id="tip-20" style="font-size:11px;padding:10px 20px;">20 €</button>
+        </div>
+        <div id="tip-msg" style="font-size:12px;color:var(--gold);min-height:18px;"></div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:1.5rem 0;"></div>
+
+      <!-- NOTE CHAUFFEUR par le CLIENT -->
+      <div style="margin-bottom:2rem;">
+        <div style="font-size:13px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem;">Notez votre chauffeur</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:0.75rem;">Clément Saunier · Kia EV6 GT Line</div>
+        <div style="display:flex;gap:10px;font-size:32px;cursor:pointer;margin-bottom:0.75rem;">
+          <span onclick="noterChauffeur(1)" id="sc1" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterChauffeur(2)" id="sc2" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterChauffeur(3)" id="sc3" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterChauffeur(4)" id="sc4" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterChauffeur(5)" id="sc5" style="color:var(--text-muted);">☆</span>
+        </div>
+        <textarea id="comment-chauffeur" placeholder="Un mot sur votre trajet ? (facultatif)" style="font-size:13px;min-height:70px;"></textarea>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:1.5rem 0;"></div>
+
+      <!-- NOTE PASSAGER par le CONDUCTEUR — masqué par défaut, visible côté conducteur uniquement -->
+      <div style="margin-bottom:2rem;">
+        <div style="font-size:13px;letter-spacing:1px;color:var(--text-muted);text-transform:uppercase;margin-bottom:0.5rem;">Note passager <span style="font-size:10px;">(visible uniquement par le conducteur)</span></div>
+        <div style="display:flex;gap:10px;font-size:32px;cursor:pointer;margin-bottom:0.75rem;">
+          <span onclick="noterPassager(1)" id="sp1" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterPassager(2)" id="sp2" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterPassager(3)" id="sp3" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterPassager(4)" id="sp4" style="color:var(--text-muted);">☆</span>
+          <span onclick="noterPassager(5)" id="sp5" style="color:var(--text-muted);">☆</span>
+        </div>
+        <textarea id="comment-passager" placeholder="Note privée sur le passager (facultatif)" style="font-size:13px;min-height:70px;"></textarea>
+      </div>
+
+      <button class="btn btn-gold" onclick="envoyerEvaluation()" style="width:100%;justify-content:center;font-size:13px;">
+        Envoyer mon évaluation
+      </button>
+      <div id="eval-sent" style="display:none;text-align:center;margin-top:1rem;font-size:13px;color:#50E090;">✓ Évaluation envoyée — merci !</div>
+    </div>
   </div>
 </section>
 
@@ -843,27 +902,42 @@ function afficherPaiement(total, reservation) {
 
 async function lancerPaiementStripe() {
   const r = state.currentReservation;
-  if (!r) { showToast('Veuillez d\'abord générer le bon.'); return; }
+  if (!r) { showToast("Veuillez d'abord générer le bon."); return; }
 
   const btn = document.getElementById('btn-stripe');
   btn.disabled = true;
-  btn.textContent = 'Redirection vers le paiement…';
+  btn.textContent = 'Création du paiement…';
 
-  // Sauvegarder la réservation localement
   saveState();
-
-  // Tenter d'enregistrer dans Wix (non bloquant)
   veloAction('CREER_RESERVATION', r).catch(() => {});
 
-  // Stripe Payment Link avec préfill email et référence
-  const params = new URLSearchParams({
-    prefilled_email:     r.email,
-    client_reference_id: r.ref,
-  });
-  const url = 'https://buy.stripe.com/fZu28jcwy0gAdYu7Py8IU00?' + params.toString();
+  try {
+    // Netlify Function — crée une session Stripe avec le montant exact
+    const response = await fetch('https://stellular-treacle-bbe74f.netlify.app/.netlify/functions/create-checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        montantCentimes: Math.round(r.total * 100),
+        ref:     r.ref,
+        nom:     r.nom,
+        email:   r.email,
+        depart:  r.depart,
+        arrivee: r.arrivee,
+      }),
+    });
 
-  // Redirection top-level pour sortir de l'iFrame
-  window.top.location.href = url;
+    const data = await response.json();
+    if (data.success && data.url) {
+      window.top.location.href = data.url;
+    } else {
+      throw new Error(data.error || 'Erreur création session Stripe');
+    }
+  } catch (err) {
+    console.error('[paiement]', err.message);
+    showToast('Erreur paiement — ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '💳 Payer ma course en ligne';
+  }
 }
 
 async function confirmerReservationApresPaiement(r) {
@@ -1007,7 +1081,7 @@ function envoyerFacture() {
 // GPS CONDUCTEUR
 // ══════════════════════════════════════
 function activerGPS() {
-  if (!navigator.geolocation) { showToast('Géolocalisation non supportée.'); return; }
+  if (!navigator.geolocation) { showToast("Géolocalisation non supportée."); return; }
   document.getElementById('geo-status').textContent='GPS en cours…'; document.getElementById('geo-status').style.color='#C9A84C';
   geoWatchId = navigator.geolocation.watchPosition(
     (pos) => {
@@ -1036,7 +1110,7 @@ function desactiverGPS() {
 }
 
 function localiserClient() {
-  const r=state.currentReservation; if(!r||!r.depart||!window.google){showToast('Aucune réservation active.');return;}
+  const r=state.currentReservation; if(!r||!r.depart||!window.google){showToast("Aucune réservation active.");return;}
   new google.maps.Geocoder().geocode({address:r.depart,region:'fr'},(results,status)=>{
     if(status!=='OK'||!results[0]){showToast('Adresse client introuvable.');return;}
     const pos=results[0].geometry.location;
@@ -1071,6 +1145,78 @@ function showToast(msg, duration=4000) {
   setTimeout(()=>t.classList.remove('show'), duration);
 }
 
+
+// ══════════════════════════════════════
+// POST-COURSE — Pourboire + Évaluations
+// ══════════════════════════════════════
+let pourboire   = 0;
+let noteChauffeur = 0;
+let notePassager  = 0;
+
+function selectionnerPourboire(montant) {
+  pourboire = montant;
+  [0,5,10,20].forEach(v => {
+    const btn = document.getElementById('tip-' + v);
+    if (v === montant && montant > 0) {
+      btn.style.background = 'var(--gold)'; btn.style.color = 'var(--noir)';
+    } else {
+      btn.style.background = 'transparent'; btn.style.color = 'var(--gold)';
+    }
+  });
+  const msg = document.getElementById('tip-msg');
+  msg.textContent = montant > 0 ? '✓ Pourboire de ' + montant + ' € — merci pour votre générosité !' : '';
+}
+
+function noterChauffeur(note) {
+  noteChauffeur = note;
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('sc' + i);
+    el.textContent = i <= note ? '★' : '☆';
+    el.style.color = i <= note ? '#C9A84C' : 'var(--text-muted)';
+  }
+}
+
+function noterPassager(note) {
+  notePassager = note;
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('sp' + i);
+    el.textContent = i <= note ? '★' : '☆';
+    el.style.color = i <= note ? '#C9A84C' : 'var(--text-muted)';
+  }
+}
+
+async function envoyerEvaluation() {
+  const r = state.currentReservation;
+  const commentaireChauffeur = document.getElementById('comment-chauffeur').value;
+  const commentairePassager  = document.getElementById('comment-passager').value;
+
+  // Envoyer vers Wix Velo
+  veloAction('ENVOYER_EVALUATION', {
+    ref: r?.ref,
+    pourboire,
+    noteChauffeur,
+    notePassager,
+    commentaireChauffeur,
+    commentairePassager,
+  }).catch(() => {});
+
+  // Si pourboire, rediriger vers Payment Link Stripe pour le pourboire
+  if (pourboire > 0) {
+    const params = new URLSearchParams({
+      prefilled_email: r?.email || '',
+      client_reference_id: 'TIP-' + (r?.ref || ''),
+    });
+    setTimeout(() => {
+      window.top.location.href = 'https://book.stripe.com/fZu28jcwy0gAdYu7Py8IU00?' + params.toString();
+    }, 1500);
+    showToast('Redirection vers le paiement du pourboire…');
+  }
+
+  document.getElementById('eval-sent').style.display = 'block';
+  document.querySelector('#post-course-box .btn-gold').disabled = true;
+  showToast('✓ Évaluation envoyée — merci !', 5000);
+}
+
 // ══════════════════════════════════════
 // INIT
 // ══════════════════════════════════════
@@ -1084,7 +1230,16 @@ const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('paiement') === 'succes') {
   const ref = urlParams.get('ref');
   document.getElementById('payment-success').style.display = 'block';
-  if (ref) { document.getElementById('success-ref').textContent = 'Réf : ' + ref + ' · Paiement confirmé !'; }
+  document.getElementById('post-course-box').style.display = 'block';
+  if (ref) {
+    document.getElementById('success-ref').textContent = 'Réf : ' + ref + ' · Paiement confirmé !';
+    // Restaurer la réservation depuis sessionStorage si disponible
+    loadState();
+  }
+  // Scroll vers la confirmation
+  setTimeout(() => {
+    document.getElementById('payment-success').scrollIntoView({ behavior: 'smooth' });
+  }, 500);
 }
 </script>
 </body>
