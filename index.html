@@ -467,7 +467,7 @@
   <div id="price-box" class="price-box" style="display:none;">
     <div class="price-box-title">Estimation tarifaire</div>
     <div class="price-row">
-      <span class="price-row-label">Prise en charge</span>
+      <span class="price-row-label">Prise en charge (frais fixes)</span>
       <span class="price-row-value" id="p-pec">—</span>
     </div>
     <div class="price-row">
@@ -486,7 +486,7 @@
       <span class="price-total-label">Total estimé TTC</span>
       <span class="price-total-value" id="p-total">—</span>
     </div>
-    <div class="price-note">* Prix calculé via Google Maps. Minimum 20 €. Le prix définitif figure sur le bon signé.</div>
+    <div class="price-note">* Tarif : 2,50 € prise en charge + 1,60 €/km · Minimum 10 € · Nuit/WE +25% · Expérience VR +50 €. Prix définitif sur le bon de commande signé.</div>
   </div>
 
   <div class="btn-row">
@@ -868,12 +868,19 @@ const CONFIG = {
   EMAIL_SOCIETE:       'c.saunier@iovers.fr',
   DRIVER_PIN:          '090916',
   IMMATRICULATION:     'GC-725-QY',
-  TARIF_KM:            2.00,
-  TARIF_MINIMUM:       20.00,
-  TARIF_ATTENTE_H:     30.00,
-  SUPPLEMENT_NUIT:     0.20,
-  FORFAIT_IMMERSIVE:   50.00,
-  STRIPE_PK:           'pk_test_51RofLA0zg3kYJbQDgr9D8bRjFTB6ND1mdCqXgcoaAKtZYbWDOrz0GhH46Ia8pc5F8P8REWT4P01coxvW7tF5FkAw00tFMlkatm',
+
+  // ── TARIFICATION iovers Mobility ──────────────────────────────
+  // Positionnement : entre Uber Comfort (1,80€/km, min 10€)
+  // et Uber Black (2,50€/km, min 15€) — premium électrique + VR
+  // ─────────────────────────────────────────────────────────────
+  TARIF_PRISE_EN_CHARGE: 2.50,   // Frais fixes de prise en charge (Uber Comfort = 3,50€)
+  TARIF_KM:              1.60,   // Prix par km (Uber Comfort ≈ 1,80€, UberX ≈ 1,40€)
+  TARIF_MINUTE:          0.35,   // Prix par minute en circulation (optionnel, non utilisé pour l'instant)
+  TARIF_MINIMUM:         10.00,  // Minimum garanti (Uber Comfort = 10€, UberX = 8€)
+  TARIF_ATTENTE_H:       25.00,  // Mise à disposition à l'heure (Uber = 30€/h)
+  SUPPLEMENT_NUIT:       0.25,   // +25% nuit/weekend (Uber = +30%, on reste compétitif)
+  FORFAIT_IMMERSIVE:     50.00,  // Forfait expérience VR BACKtotheART
+  STRIPE_PK:             'pk_test_51RofLA0zg3kYJbQDgr9D8bRjFTB6ND1mdCqXgcoaAKtZYbWDOrz0GhH46Ia8pc5F8P8REWT4P01coxvW7tF5FkAw00tFMlkatm',
 };
 
 // ══════════════════════════════════════
@@ -1098,14 +1105,31 @@ function updatePrice() {
   const dist = parseFloat(document.getElementById('distance').value) || 0;
   const type = document.getElementById('type-course').value;
   if (dist <= 0) return;
-  const pec = CONFIG.TARIF_MINIMUM, km_cost = dist * CONFIG.TARIF_KM;
-  let base = Math.max(pec, km_cost), supp = 0;
+
+  // Calcul : prise en charge + distance, avec minimum garanti
+  const pec      = CONFIG.TARIF_PRISE_EN_CHARGE;
+  const km_cost  = dist * CONFIG.TARIF_KM;
+  let   base     = Math.max(CONFIG.TARIF_MINIMUM, pec + km_cost);
+  let   supp     = 0;
+
   document.getElementById('row-supplement').style.display = 'none';
   document.getElementById('row-immersive').style.display  = 'none';
-  if (type === 'nuit') { supp = base * CONFIG.SUPPLEMENT_NUIT; document.getElementById('row-supplement').style.display = 'flex'; document.getElementById('p-supp').textContent = '+' + supp.toFixed(2) + ' €'; }
-  if (type === 'immersive') { document.getElementById('row-immersive').style.display = 'flex'; base += CONFIG.FORFAIT_IMMERSIVE; }
-  if (type === 'attente') base = dist * CONFIG.TARIF_ATTENTE_H;
+
+  if (type === 'nuit') {
+    supp = base * CONFIG.SUPPLEMENT_NUIT;
+    document.getElementById('row-supplement').style.display = 'flex';
+    document.getElementById('p-supp').textContent = '+' + supp.toFixed(2) + ' €';
+  }
+  if (type === 'immersive') {
+    document.getElementById('row-immersive').style.display = 'flex';
+    base += CONFIG.FORFAIT_IMMERSIVE;
+  }
+  if (type === 'attente') {
+    base = dist * CONFIG.TARIF_ATTENTE_H;
+  }
+
   const total = base + supp;
+
   document.getElementById('price-box').style.display   = 'block';
   document.getElementById('p-pec').textContent         = pec.toFixed(2) + ' €';
   document.getElementById('p-dist-label').textContent  = dist.toFixed(1);
@@ -1348,7 +1372,10 @@ function genererFactureDriver(r) {
   document.getElementById('fac2-date').textContent   = formatDate(r.date)+' à '+r.heure;
   document.getElementById('fac2-trajet').textContent = r.depart+' → '+r.arrivee;
   const tbody=document.getElementById('fac2-tbody'); tbody.innerHTML='';
-  const rows=[['Prise en charge','Forfait minimum',CONFIG.TARIF_MINIMUM.toFixed(2)+' €'],['Transport',r.dist.toFixed(1)+' km × '+CONFIG.TARIF_KM.toFixed(2)+' €/km',(r.dist*CONFIG.TARIF_KM).toFixed(2)+' €']];
+  const rows=[
+    ['Prise en charge','Frais fixes',CONFIG.TARIF_PRISE_EN_CHARGE.toFixed(2)+' €'],
+    ['Transport',r.dist.toFixed(1)+' km × '+CONFIG.TARIF_KM.toFixed(2)+' €/km',(r.dist*CONFIG.TARIF_KM).toFixed(2)+' €'],
+  ];
   if(r.type==='immersive') rows.push(['Expérience VR','BACKtotheART',CONFIG.FORFAIT_IMMERSIVE.toFixed(2)+' €']);
   if(r.type==='nuit') rows.push(['Supplément nuit/WE','+20%',(r.total*0.2/1.2).toFixed(2)+' €']);
   rows.forEach(([p,d,m])=>{ tbody.innerHTML+='<tr><td>'+p+'</td><td style="color:#666">'+d+'</td><td style="text-align:right">'+m+'</td></tr>'; });
