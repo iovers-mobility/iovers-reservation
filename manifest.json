@@ -1,0 +1,40 @@
+{
+  "name": "iovers Mobility",
+  "short_name": "iovers",
+  "description": "VTC Premium & Expériences Immersives — Paris Île-de-France",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#C9A84C",
+  "orientation": "portrait",
+  "lang": "fr",
+  "categories": ["travel", "lifestyle"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Réserver une course",
+      "short_name": "Réserver",
+      "url": "/?section=reservation",
+      "description": "Réserver un VTC iovers"
+    },
+    {
+      "name": "Où est mon chauffeur ?",
+      "short_name": "Chauffeur",
+      "url": "/?section=localiser",
+      "description": "Localiser le chauffeur en temps réel"
+    }
+  ]
+}
