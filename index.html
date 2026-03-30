@@ -738,7 +738,9 @@
           </div>
         </div>
         <div style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1rem;">
-          <button class="btn btn-waze" id="btn-waze" onclick="lancerWaze()" disabled>Lancer Waze</button>
+          <button class="btn btn-waze" id="btn-waze" onclick="lancerEtape2Waze()" disabled>
+  🚗 Waze → Destination client
+</button>
           <button class="btn btn-success" id="btn-accepter" onclick="accepterCourse()">✓ Accepter</button>
           <button class="btn btn-danger" id="btn-terminer" onclick="terminerCourse()" style="display:none;">■ Terminer</button>
         </div>
@@ -1303,7 +1305,23 @@ function accepterCourse() {
   document.getElementById('drv-status-badge').textContent='Course active'; document.getElementById('drv-status-badge').className='badge badge-active';
   document.getElementById('btn-accepter').style.display='none'; document.getElementById('btn-terminer').style.display='inline-flex';
   document.getElementById('btn-waze').disabled=false;
-  showToast('✓ Course acceptée — Waze prêt');
+
+  // ── WAZE ÉTAPE 1 : Aller chercher le client ──
+  // Lance automatiquement Waze vers l'adresse de départ du client
+  const adresseClient = encodeURIComponent(r.depart);
+  const wazeEtape1 = 'https://waze.com/ul?q=' + adresseClient + '&navigate=yes';
+  window.open(wazeEtape1, '_blank');
+
+  showToast('✓ Course acceptée — Navigation vers le client lancée', 5000);
+}
+
+function lancerEtape2Waze() {
+  const r = state.currentReservation; if (!r) return;
+  // ── WAZE ÉTAPE 2 : Conduire le client à destination ──
+  const adresseArrivee = encodeURIComponent(r.arrivee);
+  const wazeEtape2 = 'https://waze.com/ul?q=' + adresseArrivee + '&navigate=yes';
+  window.open(wazeEtape2, '_blank');
+  showToast('Navigation vers la destination lancée', 4000);
 }
 
 function lancerWaze() {
@@ -1363,6 +1381,13 @@ function activerGPS() {
         driverMap.panTo(latlng);
       }
       window.parent.postMessage({source:'iovers-vtc',action:'MAJ_POSITION_GPS',payload:{lat,lng,ts:Date.now()}},'*');
+
+      // Envoyer aussi directement à Netlify pour la page localiser.html
+      fetch('https://stellular-treacle-bbe74f.netlify.app/.netlify/functions/get-position', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({lat, lng, ts: Date.now()}),
+      }).catch(() => {});
     },
     (err) => { document.getElementById('geo-status').textContent='Erreur GPS — '+err.message; document.getElementById('geo-status').style.color='#E24B4A'; },
     { enableHighAccuracy:true, maximumAge:3000, timeout:10000 }
