@@ -2,8 +2,19 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>iovers Mobility — Réservation VTC</title>
+<!-- PWA -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#C9A84C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="iovers">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<!-- Open Graph -->
+<meta property="og:title" content="iovers Mobility — VTC Premium Paris">
+<meta property="og:description" content="Réservez votre VTC premium avec expérience immersive VR">
+<meta property="og:type" content="website">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://js.stripe.com/v3/"></script>
@@ -152,18 +163,181 @@
   .distance-box { display:flex; gap:1rem; align-items:center; background:var(--noir-mid); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; }
 
   /* RESPONSIVE */
-  @media (max-width: 640px) {
-    .form-grid { grid-template-columns: 1fr; }
+  /* ══════════════════════════════════════
+     RESPONSIVE MOBILE
+  ══════════════════════════════════════ */
+  @media (max-width: 768px) {
+
+    /* Navigation — cachée sur mobile, remplacée par barre en bas */
+    nav { display: none; }
+
+    /* Barre de navigation mobile en bas */
+    .mobile-nav {
+      display: flex !important;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      z-index: 200;
+      background: rgba(10,10,10,0.98);
+      border-top: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      height: 64px;
+      padding: 0;
+    }
+    .mobile-nav-btn {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-family: 'Jost', sans-serif;
+      font-size: 9px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 8px 4px;
+      transition: color .2s;
+      border-top: 2px solid transparent;
+    }
+    .mobile-nav-btn.active { color: var(--gold); border-top-color: var(--gold); }
+    .mobile-nav-btn svg { width: 20px; height: 20px; }
+
+    /* Header mobile */
+    .mobile-header {
+      display: flex !important;
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,10,0.97);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      height: 56px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 1rem;
+    }
+    .mobile-header-logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 20px; font-weight: 500; letter-spacing: 3px;
+      color: var(--gold); text-transform: uppercase;
+    }
+    .mobile-header-logo span { color: var(--text-primary); }
+
+    /* Sections */
+    .section {
+      padding: 1.5rem 1rem 90px 1rem; /* espace pour la nav en bas */
+      max-width: 100%;
+    }
+
+    /* Titres */
+    .section-title { font-size: 24px; }
+    .section-sub { font-size: 10px; margin-bottom: 1.5rem; }
+
+    /* Formulaire — 1 colonne */
+    .form-grid { grid-template-columns: 1fr; gap: 1rem; }
     .form-group.span2 { grid-column: span 1; }
+
+    /* Inputs plus grands sur mobile */
+    input, select, textarea {
+      font-size: 16px !important; /* évite le zoom iOS */
+      padding: 12px 14px;
+    }
+
+    /* Price box */
+    .price-box { padding: 1.25rem; }
+    .price-total-value { font-size: 22px; }
+
+    /* Boutons */
+    .btn { padding: 14px 20px; font-size: 11px; }
+    .btn-row { flex-direction: column; }
+    .btn-row .btn { width: 100%; justify-content: center; }
+
+    /* Bon de commande */
+    .bon-preview { padding: 1.25rem; font-size: 12px; }
+    .bon-preview .bon-sig { flex-direction: column; gap: 1rem; }
+
+    /* Expériences */
     .exp-grid { grid-template-columns: 1fr; }
-    nav { padding: 0 1rem; }
-    .nav-tab { padding: 0 0.75rem; font-size: 10px; }
-    .section { padding: 2rem 1rem; }
-    .nav-mode { display: none; }
+    .exp-card-img { height: 120px; }
+
+    /* Paiement */
+    .payment-amount { font-size: 28px; }
+    .payment-box { padding: 1.25rem; }
+
+    /* Post-course étoiles */
+    #stars-client span, #stars-driver span,
+    [id^="sc"], [id^="sp"] { font-size: 36px !important; }
+
+    /* Cards stats conducteur */
+    .card { padding: 1rem; }
+
+    /* Toast */
+    #toast { left: 1rem; right: 1rem; bottom: 74px; max-width: none; }
+
+    /* Distance box */
+    .distance-box { flex-wrap: wrap; gap: 0.5rem; }
+
+    /* Carte conducteur */
+    #driver-map { height: 200px; }
+
+    /* Section VTC immersif grid */
+    #section-vtcimmersif > div[style*="grid"] {
+      grid-template-columns: 1fr !important;
+    }
+
+    /* Pourboire boutons */
+    #post-course-box .btn-outline { padding: 12px 14px; font-size: 12px; }
+  }
+
+  /* Desktop — cacher les éléments mobile */
+  @media (min-width: 769px) {
+    .mobile-nav { display: none !important; }
+    .mobile-header { display: none !important; }
   }
 </style>
 </head>
 <body>
+
+<!-- HEADER MOBILE (caché sur desktop) -->
+<div class="mobile-header" style="display:none;">
+  <div class="mobile-header-logo">iovers<span> Mobility</span></div>
+</div>
+
+<!-- NAV MOBILE EN BAS (cachée sur desktop) -->
+<div class="mobile-nav" style="display:none;">
+  <button class="mobile-nav-btn active" onclick="showSection('reservation')" id="mnav-reservation">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+    </svg>
+    Réserver
+  </button>
+  <button class="mobile-nav-btn" onclick="showSection('experiences')" id="mnav-experiences">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M3 8a2 2 0 012-2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/>
+    </svg>
+    Expériences
+  </button>
+  <button class="mobile-nav-btn" onclick="showSection('driver')" id="mnav-driver">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+    </svg>
+    Conducteur
+  </button>
+  <button class="mobile-nav-btn" onclick="showSection('vtcimmersif')" id="mnav-vtcimmersif">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    VTC Paris
+  </button>
+  <button class="mobile-nav-btn" onclick="showSection('localiser')" id="mnav-localiser">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+      <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+    </svg>
+    Chauffeur
+  </button>
+</div>
 
 <nav>
   <div class="nav-logo">iovers<span> Mobility</span></div>
@@ -172,6 +346,7 @@
     <button class="nav-tab" onclick="showSection('experiences')">Expériences</button>
     <button class="nav-tab" onclick="showSection('driver')">Conducteur</button>
     <button class="nav-tab" onclick="showSection('vtcimmersif')">VTC Immersif Paris IDF</button>
+    <button class="nav-tab" onclick="showSection('localiser')">📍 Localiser</button>
   </div>
   <div class="nav-mode">VTC Immersif · Paris IDF</div>
 </nav>
@@ -598,12 +773,79 @@
     <div class="card"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">Expériences à bord</div><div style="font-size:14px;color:var(--text-primary);line-height:1.8;">Meta Quest 3 · 180° & 360°<br>Van Gogh · Art contemporain</div></div>
     <div class="card"><div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--gold);margin-bottom:0.5rem;">Tarifs</div><div style="font-size:14px;color:var(--text-primary);line-height:1.8;">À partir de 20 €<br>2 €/km · Nuit/WE +20%<br>VR en option +50 €</div></div>
   </div>
-  <div class="btn-row" style="margin-top:2rem;">
-    <button class="btn btn-gold" onclick="showSection('reservation')">Réserver maintenant</button>
-    <a href="tel:+33610913692" class="btn btn-outline" style="text-decoration:none;">📞 +33 6 10 91 36 92</a>
+  <div style="display:flex;flex-direction:column;gap:1rem;margin-top:2rem;">
+    <button class="btn btn-gold" onclick="showSection('reservation')" style="width:100%;justify-content:center;">Réserver maintenant</button>
+    <a href="tel:+33610913692" class="btn btn-outline" style="text-decoration:none;width:100%;justify-content:center;">📞 +33 6 10 91 36 92</a>
+    <button class="btn btn-outline" id="btn-installer-app" onclick="installerApp()" style="display:none;width:100%;justify-content:center;">
+      📲 Installer l'application iovers
+    </button>
   </div>
 </section>
 
+
+<!-- ══════════════════════════════════════
+     SECTION 5 — LOCALISER LE CHAUFFEUR
+══════════════════════════════════════ -->
+<section class="section" id="section-localiser">
+  <div class="section-title">Localiser votre chauffeur</div>
+  <div class="section-sub">iovers Mobility · Temps réel</div>
+
+  <!-- Statut chauffeur -->
+  <div id="chauffeur-status" style="background:var(--noir-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;">
+    <div id="status-dot" style="width:12px;height:12px;border-radius:50%;background:#50E090;box-shadow:0 0 8px #50E090;flex-shrink:0;"></div>
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:18px;">Clément Saunier</div>
+      <div style="font-size:12px;color:var(--text-muted);" id="chauffeur-status-text">Recherche de la position…</div>
+    </div>
+    <div style="margin-left:auto;text-align:right;">
+      <div style="font-size:11px;color:var(--text-muted);">Kia EV6 GT Line</div>
+      <div style="font-size:11px;color:var(--gold);">GC-725-QY</div>
+    </div>
+  </div>
+
+  <!-- Carte temps réel -->
+  <div id="map-localiser" style="width:100%;height:380px;border-radius:var(--radius-lg);border:1px solid var(--border);background:var(--noir-mid);margin-bottom:1.5rem;overflow:hidden;"></div>
+
+  <!-- Distance & ETA -->
+  <div id="eta-box" style="display:none;background:var(--noir-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.25rem;margin-bottom:1.5rem;">
+    <div style="display:flex;justify-content:space-around;text-align:center;">
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--gold);" id="eta-distance">—</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">Distance</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--gold);" id="eta-temps">—</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">Temps estimé</div>
+      </div>
+      <div style="width:1px;background:var(--border);"></div>
+      <div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:#50E090;" id="eta-arrivee">—</div>
+        <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--text-muted);">Arrivée</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div style="display:flex;flex-direction:column;gap:1rem;">
+    <button class="btn btn-gold" onclick="meLocaliser()" style="width:100%;justify-content:center;font-size:13px;">
+      📍 Me localiser pour calculer l'ETA
+    </button>
+    <a href="tel:+33610913692" class="btn btn-outline" style="width:100%;justify-content:center;text-decoration:none;font-size:13px;">
+      📞 Appeler le chauffeur
+    </a>
+    <a href="sms:+33610913692" class="btn btn-outline" style="width:100%;justify-content:center;text-decoration:none;font-size:13px;">
+      💬 Envoyer un SMS
+    </a>
+    <button class="btn btn-outline" onclick="showSection('reservation')" style="width:100%;justify-content:center;font-size:13px;">
+      + Réserver une course
+    </button>
+  </div>
+
+  <p style="font-size:11px;color:var(--text-muted);text-align:center;margin-top:1.5rem;">
+    La position est mise à jour toutes les 5 secondes · iovers Mobility
+  </p>
+</section>
 
 <script>
 // ══════════════════════════════════════
@@ -636,11 +878,24 @@ function saveState()  { try { sessionStorage.setItem('iovers_state', JSON.string
 function showSection(id) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-btn').forEach(t => t.classList.remove('active'));
   document.getElementById('section-' + id).classList.add('active');
+  // Nav desktop
   const tabs = document.querySelectorAll('.nav-tab');
   const idx  = ['reservation','experiences','driver','vtcimmersif'].indexOf(id);
   if (tabs[idx]) tabs[idx].classList.add('active');
+  // Nav mobile
+  const mnavBtn = document.getElementById('mnav-' + id);
+  if (mnavBtn) mnavBtn.classList.add('active');
   if (id === 'driver') refreshDriverView();
+  if (id === 'localiser') setTimeout(initMapLocaliser, 300);
+  // Mettre à jour l'index nav mobile
+  ['reservation','experiences','driver','vtcimmersif','localiser'].forEach((s, i) => {
+    const btn = document.getElementById('mnav-' + s);
+    if (btn) btn.classList.toggle('active', s === id);
+  });
+  // Scroll en haut sur mobile
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ══════════════════════════════════════
@@ -719,6 +974,9 @@ function initAutocomplete() {
   }
 
   console.log('[iovers] Autocomplete opérationnel sur les deux champs adresse');
+
+  // Initialiser la carte localiser si on est sur cet onglet
+  initMapLocaliser();
 }
 
 // ── Calcul distance automatique (après sélection autocomplete) ──
@@ -1216,6 +1474,222 @@ async function envoyerEvaluation() {
   document.querySelector('#post-course-box .btn-gold').disabled = true;
   showToast('✓ Évaluation envoyée — merci !', 5000);
 }
+
+// ══════════════════════════════════════
+// CARTE LOCALISER — Position chauffeur temps réel
+// ══════════════════════════════════════
+let mapLocaliser      = null;
+let markerChauffeur   = null;
+let markerClient      = null;
+let positionChauffeur = null; // Dernière position connue du chauffeur
+let localiserInterval = null;
+
+function initMapLocaliser() {
+  if (!window.google || mapLocaliser) return;
+  const mapDiv = document.getElementById('map-localiser');
+  if (!mapDiv) return;
+
+  mapLocaliser = new google.maps.Map(mapDiv, {
+    center: { lat: 48.8566, lng: 2.3522 },
+    zoom: 13,
+    styles: [
+      { elementType: 'geometry',           stylers: [{ color: '#0a0a0a' }] },
+      { elementType: 'labels.text.fill',   stylers: [{ color: '#8A8070' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0a0a' }] },
+      { featureType: 'road', elementType: 'geometry',        stylers: [{ color: '#1a1a1a' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#2a2010' }] },
+      { featureType: 'water', elementType: 'geometry',       stylers: [{ color: '#040D1A' }] },
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    ],
+    disableDefaultUI: false,
+    zoomControl: true,
+    streetViewControl: false,
+    mapTypeControl: false,
+    fullscreenControl: true,
+  });
+
+  // Charger la dernière position connue depuis Wix
+  chargerPositionChauffeur();
+  // Rafraîchir toutes les 5 secondes
+  localiserInterval = setInterval(chargerPositionChauffeur, 5000);
+}
+
+async function chargerPositionChauffeur() {
+  try {
+    const result = await veloAction('GET_POSITION_CHAUFFEUR', {});
+    if (result.success && result.lat && result.lng) {
+      const pos = { lat: result.lat, lng: result.lng };
+      positionChauffeur = pos;
+      afficherChauffeurSurCarte(pos);
+      const ts = result.ts ? new Date(result.ts) : new Date();
+      const diff = Math.round((Date.now() - ts.getTime()) / 1000);
+      document.getElementById('chauffeur-status-text').textContent =
+        diff < 30 ? 'En ligne · Mis à jour il y a ' + diff + 's' :
+        diff < 120 ? 'Vu il y a ' + Math.round(diff/60) + ' min' : 'Hors ligne';
+      document.getElementById('status-dot').style.background = diff < 60 ? '#50E090' : '#8A8070';
+      document.getElementById('status-dot').style.boxShadow  = diff < 60 ? '0 0 8px #50E090' : 'none';
+    } else {
+      // Fallback — position fixe bureau si pas de données
+      document.getElementById('chauffeur-status-text').textContent = 'Position en attente de mise à jour…';
+    }
+  } catch(e) {
+    document.getElementById('chauffeur-status-text').textContent = 'Connexion en cours…';
+  }
+}
+
+function afficherChauffeurSurCarte(pos) {
+  if (!mapLocaliser) return;
+  if (!markerChauffeur) {
+    markerChauffeur = new google.maps.Marker({
+      position: pos,
+      map: mapLocaliser,
+      icon: {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 7,
+        fillColor: '#C9A84C',
+        fillOpacity: 1,
+        strokeColor: '#0A0A0A',
+        strokeWeight: 2,
+        rotation: 0,
+      },
+      title: 'Clément Saunier · iovers Mobility',
+      zIndex: 10,
+      animation: google.maps.Animation.DROP,
+    });
+
+    // Info window au clic
+    const infoWindow = new google.maps.InfoWindow({
+      content: `<div style="font-family:Arial;font-size:13px;color:#111;padding:4px;">
+        <strong>Clément Saunier</strong><br>
+        Kia EV6 GT Line · GC-725-QY<br>
+        <span style="color:#C9A84C;">iovers Mobility</span>
+      </div>`
+    });
+    markerChauffeur.addListener('click', () => infoWindow.open(mapLocaliser, markerChauffeur));
+  } else {
+    markerChauffeur.setPosition(pos);
+  }
+  mapLocaliser.panTo(pos);
+}
+
+function meLocaliser() {
+  if (!navigator.geolocation) { showToast('Géolocalisation non supportée.'); return; }
+  showToast('Localisation en cours…');
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const clientPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      if (!mapLocaliser) { showToast("Carte non disponible — allez dans l'onglet Localiser."); return; }
+
+      if (!markerClient) {
+        markerClient = new google.maps.Marker({
+          position: clientPos,
+          map: mapLocaliser,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#50E090',
+            fillOpacity: 1,
+            strokeColor: '#0A0A0A',
+            strokeWeight: 2,
+          },
+          title: 'Votre position',
+          zIndex: 9,
+        });
+      } else { markerClient.setPosition(clientPos); }
+
+      // Calculer ETA si on a la position du chauffeur
+      if (positionChauffeur && window.google) {
+        const bounds = new google.maps.LatLngBounds();
+        bounds.extend(positionChauffeur);
+        bounds.extend(clientPos);
+        mapLocaliser.fitBounds(bounds);
+
+        new google.maps.DistanceMatrixService().getDistanceMatrix({
+          origins: [positionChauffeur],
+          destinations: [clientPos],
+          travelMode: google.maps.TravelMode.DRIVING,
+          unitSystem: google.maps.UnitSystem.METRIC,
+        }, (response, status) => {
+          if (status === 'OK') {
+            const el = response.rows[0].elements[0];
+            if (el.status === 'OK') {
+              const km  = (el.distance.value / 1000).toFixed(1);
+              const dur = el.duration.text;
+              const eta = new Date(Date.now() + el.duration.value * 1000);
+              const etaStr = eta.getHours().toString().padStart(2,'0') + ':' + eta.getMinutes().toString().padStart(2,'0');
+              document.getElementById('eta-distance').textContent = km + ' km';
+              document.getElementById('eta-temps').textContent    = dur;
+              document.getElementById('eta-arrivee').textContent  = etaStr;
+              document.getElementById('eta-box').style.display    = 'block';
+              showToast('✓ ETA calculé — ' + dur);
+            }
+          }
+        });
+      } else {
+        mapLocaliser.panTo(clientPos);
+        mapLocaliser.setZoom(15);
+        showToast('Position trouvée — chauffeur en cours de localisation');
+      }
+    },
+    (err) => showToast('Erreur géolocalisation : ' + err.message),
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+// Écouter les positions GPS envoyées par le panneau conducteur
+window.addEventListener('message', (e) => {
+  if (e.data?.source === 'iovers-vtc' && e.data?.action === 'MAJ_POSITION_GPS') {
+    const { lat, lng } = e.data.payload || {};
+    if (lat && lng) afficherChauffeurSurCarte({ lat, lng });
+  }
+});
+
+// ══════════════════════════════════════
+// PWA — Installation & Service Worker
+// ══════════════════════════════════════
+let deferredInstallPrompt = null;
+
+// Enregistrer le Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[PWA] Service Worker enregistré:', reg.scope))
+      .catch(err => console.warn('[PWA] Erreur SW:', err));
+  });
+}
+
+// Capturer l'événement d'installation
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Afficher bouton "Installer l'app"
+  const btn = document.getElementById('btn-installer-app');
+  if (btn) btn.style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] App installée !');
+  deferredInstallPrompt = null;
+  const btn = document.getElementById('btn-installer-app');
+  if (btn) btn.style.display = 'none';
+  showToast("✓ Application iovers installée sur votre écran d'accueil !", 5000);
+});
+
+function installerApp() {
+  if (!deferredInstallPrompt) {
+    showToast("Pour installer : Menu → Ajouter à l'écran d'accueil");
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(choice => {
+    if (choice.outcome === 'accepted') showToast('✓ Installation en cours…');
+    deferredInstallPrompt = null;
+  });
+}
+
+// Ajouter le bouton "Ouvrir la section localiser" au chargement si paramètre URL
+const urlSection = new URLSearchParams(window.location.search).get('section');
+if (urlSection) showSection(urlSection);
 
 // ══════════════════════════════════════
 // INIT
