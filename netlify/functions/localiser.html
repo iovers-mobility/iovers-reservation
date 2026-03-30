@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>iovers Mobility — Localiser votre chauffeur</title>
+<meta name="theme-color" content="#C9A84C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDZtcNWyBBecS9jRXvB6USFRIF3830S4Pw&libraries=geometry&callback=initMap" async defer></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --gold: #C9A84C; --noir: #0A0A0A; --noir-mid: #1A1A1A;
+    --noir-card: #141414; --text: #F0EBE0; --muted: #8A8070;
+    --border: rgba(201,168,76,0.2); --green: #50E090;
+  }
+  body { background: var(--noir); color: var(--text); font-family: 'Jost', sans-serif; font-weight: 300; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* HEADER */
+  header {
+    background: rgba(10,10,10,0.97);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+    padding-top: max(12px, env(safe-area-inset-top));
+  }
+  .logo { font-family: 'Cormorant Garamond', serif; font-size: 18px; letter-spacing: 3px; color: var(--gold); text-transform: uppercase; }
+  .logo span { color: var(--text); }
+  .status-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(80,224,144,0.1); border: 1px solid rgba(80,224,144,0.3);
+    border-radius: 100px; padding: 4px 10px;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--green);
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+  /* CARTE — plein écran */
+  #map { flex: 1; width: 100%; }
+
+  /* PANEL BAS */
+  .bottom-panel {
+    background: rgba(10,10,10,0.97);
+    border-top: 1px solid var(--border);
+    padding: 16px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+    flex-shrink: 0;
+  }
+
+  /* CHAUFFEUR INFO */
+  .driver-card {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px;
+  }
+  .driver-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #1a1206, #2a1e08);
+    border: 1px solid var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Cormorant Garamond', serif; font-size: 18px; color: var(--gold);
+    flex-shrink: 0;
+  }
+  .driver-info { flex: 1; min-width: 0; }
+  .driver-name { font-family: 'Cormorant Garamond', serif; font-size: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .driver-sub { font-size: 11px; color: var(--muted); }
+  .driver-immat { font-size: 11px; color: var(--gold); }
+
+  /* ETA BAR */
+  .eta-bar {
+    display: flex; gap: 0;
+    background: var(--noir-mid); border: 1px solid var(--border);
+    border-radius: 8px; overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .eta-item { flex: 1; text-align: center; padding: 10px 4px; }
+  .eta-item + .eta-item { border-left: 1px solid var(--border); }
+  .eta-val { font-family: 'Cormorant Garamond', serif; font-size: 22px; color: var(--gold); line-height: 1; }
+  .eta-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+
+  /* ACTIONS */
+  .actions { display: flex; gap: 10px; }
+  .btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px; padding: 12px 8px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: 'Jost', sans-serif; font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    transition: all .2s; text-decoration: none;
+  }
+  .btn-call { background: rgba(80,224,144,0.12); color: var(--green); border: 1px solid rgba(80,224,144,0.3); }
+  .btn-call:hover { background: rgba(80,224,144,0.2); }
+  .btn-sms { background: rgba(201,168,76,0.1); color: var(--gold); border: 1px solid var(--border); }
+  .btn-sms:hover { background: rgba(201,168,76,0.18); }
+  .btn-book { background: var(--gold); color: var(--noir); font-weight: 500; }
+  .btn-book:hover { background: #E8C97A; }
+  .btn svg { width: 20px; height: 20px; }
+
+  /* STATUS MESSAGE */
+  #status-msg { font-size: 12px; color: var(--muted); text-align: center; padding: 6px 0 10px; }
+
+  /* LOADING */
+  #loading {
+    position: absolute; inset: 0; background: var(--noir);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 16px; z-index: 10;
+  }
+  .spinner { width: 36px; height: 36px; border: 2px solid var(--border); border-top-color: var(--gold); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { font-size: 13px; color: var(--muted); letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Localisation en cours…</p>
+</div>
+
+<header>
+  <div class="logo">iovers<span> Mobility</span></div>
+  <div class="status-pill">
+    <div class="status-dot" id="dot"></div>
+    <span id="status-live">En ligne</span>
+  </div>
+</header>
+
+<div id="map"></div>
+
+<div class="bottom-panel">
+  <div id="status-msg">Recherche de votre chauffeur…</div>
+
+  <div class="driver-card">
+    <div class="driver-avatar">CS</div>
+    <div class="driver-info">
+      <div class="driver-name">Clément Saunier</div>
+      <div class="driver-sub">Kia EV6 GT Line · Électrique</div>
+      <div class="driver-immat">GC-725-QY</div>
+    </div>
+  </div>
+
+  <div class="eta-bar" id="eta-bar" style="display:none;">
+    <div class="eta-item">
+      <div class="eta-val" id="eta-dist">—</div>
+      <div class="eta-label">Distance</div>
+    </div>
+    <div class="eta-item">
+      <div class="eta-val" id="eta-time">—</div>
+      <div class="eta-label">Temps</div>
+    </div>
+    <div class="eta-item">
+      <div class="eta-val" id="eta-arr">—</div>
+      <div class="eta-label">Arrivée</div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <a href="tel:+33610913692" class="btn btn-call">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5.5C3 14.06 9.94 21 18.5 21c.386 0 .77-.014 1.148-.042.435-.032.653-.048.851-.162a1.25 1.25 0 00.462-.52c.089-.199.089-.432.089-.898v-3.433c0-.406 0-.61-.077-.77a.75.75 0 00-.432-.397c-.164-.059-.364-.042-.764-.009a11.77 11.77 0 01-2.22.034c-.36-.05-.54-.076-.702-.168a.75.75 0 01-.274-.274c-.092-.161-.118-.342-.168-.702a11.77 11.77 0 01-.034-2.22c.033-.4.05-.6-.009-.764a.75.75 0 00-.397-.432c-.16-.077-.364-.077-.77-.077H10.6c-.466 0-.699 0-.898.089a1.25 1.25 0 00-.52.462c-.114.198-.13.416-.162.851A15.56 15.56 0 019 18.5C9 9.94 3 3 3 3"/></svg>
+      Appeler
+    </a>
+    <a href="sms:+33610913692" class="btn btn-sms">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.86 9.86 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+      SMS
+    </a>
+    <a href="https://iovers-mobility.github.io/iovers-reservation/" class="btn btn-book">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 4v16m8-8H4"/></svg>
+      Réserver
+    </a>
+  </div>
+</div>
+
+<script>
+const MAPS_KEY = 'AIzaSyDZtcNWyBBecS9jRXvB6USFRIF3830S4Pw';
+// URL Netlify function pour récupérer la position
+const POSITION_URL = 'https://stellular-treacle-bbe74f.netlify.app/.netlify/functions/get-position';
+
+let map, markerChauffeur, markerClient, circleClient;
+let positionChauffeur = null;
+let positionClient    = null;
+let refreshInterval   = null;
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 48.8566, lng: 2.3522 },
+    zoom: 13,
+    styles: [
+      { elementType: 'geometry',           stylers: [{ color: '#0a0a0a' }] },
+      { elementType: 'labels.text.fill',   stylers: [{ color: '#8A8070' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#0a0a0a' }] },
+      { featureType: 'road', elementType: 'geometry',        stylers: [{ color: '#1a1a1a' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#2a2010' }] },
+      { featureType: 'road.arterial', elementType: 'labels.text.fill', stylers: [{ color: '#4a4030' }] },
+      { featureType: 'water', elementType: 'geometry',       stylers: [{ color: '#040D1A' }] },
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    ],
+    disableDefaultUI: true,
+    zoomControl: true,
+    gestureHandling: 'greedy',
+  });
+
+  document.getElementById('loading').style.display = 'none';
+
+  // Localiser le client
+  localiserClient();
+
+  // Charger position chauffeur
+  chargerPositionChauffeur();
+  refreshInterval = setInterval(chargerPositionChauffeur, 5000);
+}
+
+// Localiser le client (géoloc navigateur)
+function localiserClient() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.watchPosition(
+    (pos) => {
+      positionClient = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      if (!markerClient) {
+        markerClient = new google.maps.Marker({
+          position: positionClient, map,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8, fillColor: '#50E090', fillOpacity: 1,
+            strokeColor: '#0A0A0A', strokeWeight: 2,
+          },
+          title: 'Votre position', zIndex: 9,
+        });
+        circleClient = new google.maps.Circle({
+          map, center: positionClient, radius: 80,
+          fillColor: '#50E090', fillOpacity: 0.08,
+          strokeColor: '#50E090', strokeWeight: 1,
+        });
+      } else {
+        markerClient.setPosition(positionClient);
+        circleClient.setCenter(positionClient);
+      }
+      if (positionChauffeur) calculerETA();
+    },
+    (err) => console.warn('Géoloc client:', err.message),
+    { enableHighAccuracy: true, maximumAge: 3000 }
+  );
+}
+
+// Récupérer la position du chauffeur via Netlify Function
+async function chargerPositionChauffeur() {
+  try {
+    const res  = await fetch(POSITION_URL);
+    const data = await res.json();
+
+    if (data.success && data.lat && data.lng) {
+      positionChauffeur = { lat: data.lat, lng: data.lng };
+      afficherChauffeur(positionChauffeur);
+
+      const ts   = data.ts ? new Date(data.ts) : new Date();
+      const diff = Math.round((Date.now() - ts.getTime()) / 1000);
+      const online = diff < 60;
+
+      document.getElementById('dot').style.background       = online ? '#50E090' : '#8A8070';
+      document.getElementById('dot').style.animation        = online ? 'pulse 2s infinite' : 'none';
+      document.getElementById('status-live').textContent    = online ? 'En ligne' : 'Hors ligne';
+      document.getElementById('status-msg').textContent     = online
+        ? 'Votre chauffeur est en route · mis à jour il y a ' + diff + 's'
+        : 'Dernière position il y a ' + Math.round(diff/60) + ' min';
+
+      if (positionClient) calculerETA();
+    } else {
+      document.getElementById('status-msg').textContent = 'Position en attente de mise à jour…';
+    }
+  } catch(e) {
+    document.getElementById('status-msg').textContent = 'Connexion en cours…';
+  }
+}
+
+function afficherChauffeur(pos) {
+  if (!markerChauffeur) {
+    markerChauffeur = new google.maps.Marker({
+      position: pos, map,
+      icon: {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 7, fillColor: '#C9A84C', fillOpacity: 1,
+        strokeColor: '#0A0A0A', strokeWeight: 2,
+      },
+      title: 'Clément Saunier · iovers Mobility',
+      zIndex: 10,
+      animation: google.maps.Animation.DROP,
+    });
+    new google.maps.InfoWindow({
+      content: '<div style="font-size:13px;color:#111;padding:4px;"><strong>Clément Saunier</strong><br>Kia EV6 GT Line · GC-725-QY</div>'
+    }).open(map, markerChauffeur);
+  } else {
+    markerChauffeur.setPosition(pos);
+  }
+  // Ajuster la vue pour voir les deux marqueurs
+  if (positionClient) {
+    const bounds = new google.maps.LatLngBounds();
+    bounds.extend(pos);
+    bounds.extend(positionClient);
+    map.fitBounds(bounds, { top: 40, right: 40, bottom: 20, left: 40 });
+  } else {
+    map.panTo(pos);
+  }
+}
+
+function calculerETA() {
+  if (!positionChauffeur || !positionClient) return;
+  new google.maps.DistanceMatrixService().getDistanceMatrix({
+    origins:      [positionChauffeur],
+    destinations: [positionClient],
+    travelMode:   google.maps.TravelMode.DRIVING,
+    unitSystem:   google.maps.UnitSystem.METRIC,
+  }, (response, status) => {
+    if (status !== 'OK') return;
+    const el = response.rows[0].elements[0];
+    if (el.status !== 'OK') return;
+    const km  = (el.distance.value / 1000).toFixed(1);
+    const dur = el.duration.text;
+    const eta = new Date(Date.now() + el.duration.value * 1000);
+    const h   = eta.getHours().toString().padStart(2,'0');
+    const m   = eta.getMinutes().toString().padStart(2,'0');
+    document.getElementById('eta-dist').textContent = km + ' km';
+    document.getElementById('eta-time').textContent = dur;
+    document.getElementById('eta-arr').textContent  = h + ':' + m;
+    document.getElementById('eta-bar').style.display = 'flex';
+  });
+}
+</script>
+</body>
+</html>
